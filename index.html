@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="app:supabase-url" content="https://utpabialwllcedorgirk.supabase.co" />
+    <meta name="app:supabase-anon-key" content="sb_publishable_boHoM6HoXBA9mi4Ju5cn-g_NHWY5Hy1" />
+    <title>Resort Lead Finder</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <section id="landingPage" class="landing-page">
+      <header class="landing-nav">
+        <div class="brand landing-brand">
+          <div class="brand-mark" aria-hidden="true">R</div>
+          <div>
+            <h1>Resort Lead Finder</h1>
+            <p>Vacation sales pipeline</p>
+          </div>
+        </div>
+        <div class="landing-actions">
+          <button id="landingSignIn" class="button secondary" type="button">Sign in</button>
+          <button id="openDemo" class="button primary" type="button">Open demo</button>
+        </div>
+      </header>
+
+      <section class="landing-hero">
+        <div class="landing-hero-content">
+          <p class="eyebrow">Lead scoring for resort sales teams</p>
+          <h2>Turn scattered vacation inquiries into booked stays.</h2>
+          <p class="landing-copy">Resort Lead Finder helps vacation sales teams import leads, spot the hottest prospects, assign follow-ups, and send trip-specific outreach before interested travelers go cold.</p>
+          <div class="landing-cta">
+            <button class="button primary" data-open-app type="button">Try the dashboard</button>
+            <button class="button light" data-scroll-pricing type="button">View plans</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="landing-section">
+        <div class="section-heading">
+          <p class="eyebrow">Built for booking teams</p>
+          <h3>Everything reps need to move faster.</h3>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card">
+            <strong>Lead scoring</strong>
+            <p>Rank prospects by budget, travel window, destination interest, group type, and sales status.</p>
+          </article>
+          <article class="feature-card">
+            <strong>Follow-up tasks</strong>
+            <p>Create call and email reminders automatically so high-intent travelers do not slip away.</p>
+          </article>
+          <article class="feature-card">
+            <strong>Outreach scripts</strong>
+            <p>Generate messages for family resorts, all-inclusive stays, anniversary trips, and group travel.</p>
+          </article>
+          <article class="feature-card">
+            <strong>Company workspaces</strong>
+            <p>Each resort or agency gets a private workspace with secure company-level data separation.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="landing-section proof-band">
+        <div>
+          <p class="eyebrow">Why teams use it</p>
+          <h3>More bookings from the leads you already paid for.</h3>
+        </div>
+        <div class="proof-metrics">
+          <div><strong>5 min</strong><span>CSV import to prioritized pipeline</span></div>
+          <div><strong>24 hr</strong><span>Hot lead follow-up target</span></div>
+          <div><strong>100%</strong><span>Workspace-level data separation</span></div>
+        </div>
+      </section>
+
+      <section class="landing-section">
+        <div class="section-heading">
+          <p class="eyebrow">Simple launch plans</p>
+          <h3>Start with one sales team, then expand.</h3>
+        </div>
+        <div id="plans" class="pricing-grid">
+          <article class="price-card">
+            <span>Starter</span>
+            <strong>$199/mo</strong>
+            <p>For one resort or small agency proving the workflow.</p>
+          </article>
+          <article class="price-card featured">
+            <span>Team</span>
+            <strong>$499/mo</strong>
+            <p>For sales managers who need rep follow-ups, imports, and pipeline tracking.</p>
+          </article>
+          <article class="price-card">
+            <span>Pro</span>
+            <strong>Custom</strong>
+            <p>For multi-location resorts, vacation clubs, and CRM integrations.</p>
+          </article>
+        </div>
+      </section>
+    </section>
+
+    <div id="appExperience" class="app-experience hidden">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">R</div>
+        <div>
+          <h1>Resort Lead Finder</h1>
+          <p>Vacation sales pipeline</p>
+        </div>
+      </div>
+
+      <nav class="nav" aria-label="Main navigation">
+        <button class="nav-item active" data-view="dashboard" type="button">
+          <span aria-hidden="true">◆</span>
+          Dashboard
+        </button>
+        <button class="nav-item" data-view="finder" type="button">
+          <span aria-hidden="true">⌕</span>
+          Lead Finder
+        </button>
+        <button class="nav-item" data-view="pipeline" type="button">
+          <span aria-hidden="true">▦</span>
+          Pipeline
+        </button>
+        <button class="nav-item" data-view="outreach" type="button">
+          <span aria-hidden="true">✉</span>
+          Outreach
+        </button>
+        <button class="nav-item" data-view="settings" type="button">
+          <span aria-hidden="true">⚙</span>
+          Settings
+        </button>
+      </nav>
+
+      <section class="sidebar-panel">
+        <h2 id="workspaceName">Demo Resort Co.</h2>
+        <p id="workspaceMode">Local demo workspace</p>
+      </section>
+
+      <section class="sidebar-panel">
+        <h2>Automation</h2>
+        <label class="toggle-row">
+          <input id="autoScore" type="checkbox" checked />
+          Auto-score new leads
+        </label>
+        <label class="toggle-row">
+          <input id="autoTasks" type="checkbox" checked />
+          Create follow-up tasks
+        </label>
+      </section>
+    </aside>
+
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Sales command center</p>
+          <h2 id="viewTitle">Dashboard</h2>
+        </div>
+        <div class="topbar-actions">
+          <button id="backHome" class="button secondary" type="button">Home</button>
+          <label class="file-button">
+            Import CSV
+            <input id="csvImport" type="file" accept=".csv,text/csv" />
+          </label>
+          <button id="exportCsv" class="button secondary" type="button">Export CSV</button>
+          <button id="openAuth" class="button secondary" type="button">Sign in</button>
+          <button id="openNewLead" class="button primary" type="button">New lead</button>
+        </div>
+      </header>
+
+      <section class="workspace-strip">
+        <div>
+          <strong id="accountLabel">Demo mode</strong>
+          <span id="accountDetail">Data is stored on this browser until Supabase is connected.</span>
+        </div>
+        <button id="syncNow" class="button secondary" type="button">Sync</button>
+      </section>
+
+      <section class="hero-band" aria-label="Resort sales focus">
+        <div>
+          <p>Today’s priority</p>
+          <strong>Find travelers who are ready for family resorts, anniversary trips, and winter escapes.</strong>
+        </div>
+      </section>
+
+      <section class="view active" id="dashboard">
+        <div class="metrics-grid">
+          <article class="metric">
+            <span>Total leads</span>
+            <strong id="metricTotal">0</strong>
+          </article>
+          <article class="metric">
+            <span>Hot prospects</span>
+            <strong id="metricHot">0</strong>
+          </article>
+          <article class="metric">
+            <span>Trips this quarter</span>
+            <strong id="metricQuarter">0</strong>
+          </article>
+          <article class="metric">
+            <span>Est. opportunity</span>
+            <strong id="metricValue">$0</strong>
+          </article>
+        </div>
+
+        <div class="split-layout">
+          <section class="panel">
+            <div class="panel-heading">
+              <h3>Best leads</h3>
+              <button class="icon-button" id="refreshScores" type="button" title="Refresh scores">↻</button>
+            </div>
+            <div id="bestLeads" class="lead-list"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-heading">
+              <h3>Follow-ups</h3>
+              <button class="icon-button" id="clearDone" type="button" title="Clear completed">✓</button>
+            </div>
+            <div id="taskList" class="task-list"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="finder">
+        <section class="panel">
+          <div class="panel-heading">
+            <h3>Find matching prospects</h3>
+            <button id="generateLeads" class="button primary" type="button">Generate sample leads</button>
+          </div>
+
+          <div class="filters">
+            <label>
+              Destination
+              <select id="destinationFilter">
+                <option value="any">Any destination</option>
+                <option value="Beach">Beach</option>
+                <option value="Mountain">Mountain</option>
+                <option value="Theme parks">Theme parks</option>
+                <option value="Cruise">Cruise</option>
+                <option value="All-inclusive">All-inclusive</option>
+              </select>
+            </label>
+            <label>
+              Budget minimum
+              <input id="budgetFilter" type="range" min="1000" max="15000" step="500" value="2500" />
+              <span id="budgetLabel">$2,500+</span>
+            </label>
+            <label>
+              Travel window
+              <select id="windowFilter">
+                <option value="any">Any time</option>
+                <option value="30">Next 30 days</option>
+                <option value="90">Next 90 days</option>
+                <option value="180">Next 6 months</option>
+              </select>
+            </label>
+            <label>
+              Group type
+              <select id="groupFilter">
+                <option value="any">Any group</option>
+                <option value="Family">Family</option>
+                <option value="Couple">Couple</option>
+                <option value="Friends">Friends</option>
+                <option value="Corporate">Corporate</option>
+              </select>
+            </label>
+          </div>
+
+          <div id="finderResults" class="results-grid"></div>
+        </section>
+      </section>
+
+      <section class="view" id="pipeline">
+        <section class="panel">
+          <div class="panel-heading">
+            <h3>Lead pipeline</h3>
+            <div class="search-wrap">
+              <input id="leadSearch" type="search" placeholder="Search leads" />
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Interest</th>
+                  <th>Budget</th>
+                  <th>Travel</th>
+                  <th>Score</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="pipelineRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section class="view" id="outreach">
+        <section class="panel">
+          <div class="panel-heading">
+            <h3>Outreach planner</h3>
+            <button id="copyScript" class="button secondary" type="button">Copy script</button>
+          </div>
+          <div class="outreach-grid">
+            <label>
+              Select lead
+              <select id="scriptLead"></select>
+            </label>
+            <label>
+              Offer
+              <select id="scriptOffer">
+                <option>family resort package</option>
+                <option>all-inclusive beach escape</option>
+                <option>anniversary getaway</option>
+                <option>holiday travel bundle</option>
+              </select>
+            </label>
+            <label class="wide">
+              Script
+              <textarea id="scriptText" rows="9"></textarea>
+            </label>
+          </div>
+        </section>
+      </section>
+
+      <section class="view" id="settings">
+        <div class="split-layout">
+          <section class="panel">
+            <div class="panel-heading">
+              <h3>Company workspace</h3>
+              <button id="saveWorkspace" class="button primary" type="button">Save</button>
+            </div>
+            <div class="form-grid">
+              <label class="wide">Company name<input id="companyNameInput" value="Demo Resort Co." /></label>
+              <label>Default rep role
+                <select id="defaultRoleInput">
+                  <option>Sales Rep</option>
+                  <option>Manager</option>
+                  <option>Owner</option>
+                </select>
+              </label>
+              <label>Subscription plan
+                <select id="planInput">
+                  <option>Starter</option>
+                  <option>Team</option>
+                  <option>Pro</option>
+                </select>
+              </label>
+              <label class="wide">Invite teammate<input id="inviteEmail" type="email" placeholder="sales@company.com" /></label>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-heading">
+              <h3>Data separation</h3>
+            </div>
+            <div class="security-list">
+              <div><strong>Company ID</strong><span id="tenantIdLabel">local-demo</span></div>
+              <div><strong>Lead visibility</strong><span>Only rows matching this company workspace</span></div>
+              <div><strong>Database guard</strong><span>Supabase Row Level Security in supabase/schema.sql</span></div>
+              <div><strong>Billing owner</strong><span>Stripe customer is tied to the company, not one device</span></div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="leadDialog">
+      <form method="dialog" class="lead-form">
+        <div class="panel-heading">
+          <h3>Add lead</h3>
+          <button class="icon-button" value="cancel" type="submit" title="Close">×</button>
+        </div>
+        <div class="form-grid">
+          <label>Name<input id="leadName" required /></label>
+          <label>Email<input id="leadEmail" type="email" required /></label>
+          <label>Phone<input id="leadPhone" /></label>
+          <label>Destination
+            <select id="leadDestination">
+              <option>Beach</option>
+              <option>Mountain</option>
+              <option>Theme parks</option>
+              <option>Cruise</option>
+              <option>All-inclusive</option>
+            </select>
+          </label>
+          <label>Group type
+            <select id="leadGroup">
+              <option>Family</option>
+              <option>Couple</option>
+              <option>Friends</option>
+              <option>Corporate</option>
+            </select>
+          </label>
+          <label>Budget<input id="leadBudget" type="number" min="0" step="100" value="4500" /></label>
+          <label>Travel date<input id="leadDate" type="date" /></label>
+          <label>Status
+            <select id="leadStatus">
+              <option>New</option>
+              <option>Contacted</option>
+              <option>Qualified</option>
+              <option>Proposal</option>
+              <option>Booked</option>
+            </select>
+          </label>
+          <label class="wide">Notes<textarea id="leadNotes" rows="4"></textarea></label>
+        </div>
+        <menu>
+          <button class="button secondary" value="cancel" type="submit">Cancel</button>
+          <button id="saveLead" class="button primary" value="default" type="button">Save lead</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog id="authDialog">
+      <form method="dialog" class="lead-form">
+        <div class="panel-heading">
+          <h3>Company sign in</h3>
+          <button class="icon-button" value="cancel" type="submit" title="Close">×</button>
+        </div>
+        <div class="auth-tabs">
+          <button class="button secondary active" data-auth-mode="signin" type="button">Sign in</button>
+          <button class="button secondary" data-auth-mode="signup" type="button">Create company</button>
+        </div>
+        <div class="form-grid">
+          <label id="authCompanyWrap" class="wide hidden">Company name<input id="authCompany" placeholder="Rocking Horse Ranch" /></label>
+          <label>Email<input id="authEmail" type="email" placeholder="owner@company.com" /></label>
+          <label>Password<input id="authPassword" type="password" placeholder="Minimum 6 characters" /></label>
+        </div>
+        <p class="auth-note">When Supabase is connected, each company signs into a private workspace. In demo mode this creates a local workspace only.</p>
+        <menu>
+          <button id="signOut" class="button secondary" type="button">Sign out</button>
+          <button id="submitAuth" class="button primary" type="button">Continue</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="vendor/supabase.js"></script>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+    </div>
+  </body>
+</html>

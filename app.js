@@ -71,6 +71,7 @@ const state = {
   company: { id: DEMO_COMPANY_ID, name: "Demo Resort Co.", plan: "Starter", role: "Owner" },
   user: null,
   subscription: null,
+  cloudError: null,
   authMode: "signin",
   leads: [],
   tasks: [],
@@ -337,6 +338,7 @@ async function hydrateSession() {
 
 async function loadWorkspace() {
   state.loading = true;
+  state.cloudError = null;
 
   if (supabaseClient && state.user) {
     await loadRemoteWorkspace();
@@ -358,23 +360,34 @@ function loadLocalWorkspace() {
 }
 
 async function loadRemoteWorkspace() {
-  const { data: membership, error: memberError } = await supabaseClient
-    .from("company_members")
-    .select("role, companies(id, name, plan)")
-    .eq("user_id", state.user.id)
-    .limit(1)
-    .maybeSingle();
+  let { data: membership, error: memberError } = await fetchMembership();
 
   if (memberError) {
     showToast(memberError.message);
-    loadLocalWorkspace();
+    state.cloudError = memberError.message;
+    state.company = { id: "cloud-error", name: "Cloud workspace", plan: "Starter", role: "Owner" };
+    state.leads = [];
+    state.tasks = [];
+    state.subscription = null;
     return;
   }
 
   if (!membership) {
-    loadLocalWorkspace();
-    showToast("Create a company workspace to start syncing.");
-    return;
+    const defaultCompanyName = state.user.user_metadata?.company_name || `${state.user.email?.split("@")[0] || "New"} workspace`;
+    await createRemoteCompany(defaultCompanyName);
+    const retry = await fetchMembership();
+    membership = retry.data;
+    memberError = retry.error;
+
+    if (memberError || !membership) {
+      state.cloudError = memberError?.message || "No company workspace found for this account.";
+      state.company = { id: "cloud-setup", name: defaultCompanyName, plan: "Starter", role: "Owner" };
+      state.leads = [];
+      state.tasks = [];
+      state.subscription = null;
+      showToast(state.cloudError);
+      return;
+    }
   }
 
   state.company = {
@@ -404,6 +417,15 @@ async function loadRemoteWorkspace() {
   state.subscription = subscriptions?.[0] || null;
 }
 
+function fetchMembership() {
+  return supabaseClient
+    .from("company_members")
+    .select("role, companies(id, name, plan)")
+    .eq("user_id", state.user.id)
+    .limit(1)
+    .maybeSingle();
+}
+
 async function submitAuth() {
   const email = document.querySelector("#authEmail").value.trim();
   const password = document.querySelector("#authPassword").value;
@@ -427,6 +449,10 @@ async function completeAuth(email, password, companyName, options = {}) {
   }
 
   if (!supabaseClient) {
+    if (!isLocalDemoHost()) {
+      showToast("Cloud sign-in is unavailable. Check Supabase configuration and deployed scripts.");
+      return;
+    }
     state.user = { email };
     if (state.authMode === "signup") {
       state.company = { ...state.company, name: companyName };
@@ -527,6 +553,10 @@ function setAuthMode(mode) {
   });
   document.querySelector("#authCompanyWrap").classList.toggle("hidden", mode !== "signup");
   document.querySelector("#submitAuth").textContent = mode === "signup" ? "Create workspace" : "Continue";
+}
+
+function isLocalDemoHost() {
+  return ["localhost", "127.0.0.1", ""].includes(window.location.hostname);
 }
 
 async function addLeadFromForm() {
@@ -640,7 +670,7 @@ function render() {
 }
 
 function renderAccount() {
-  const cloud = supabaseClient && state.user && state.company.id !== DEMO_COMPANY_ID;
+  const cloud = Boolean(supabaseClient && state.user);
   const status = state.subscription?.status;
   document.querySelector("#workspaceName").textContent = state.company.name;
   document.querySelector("#workspaceMode").textContent = cloud
@@ -648,7 +678,7 @@ function renderAccount() {
     : "Local demo workspace";
   document.querySelector("#accountLabel").textContent = cloud ? state.company.name : "Demo mode";
   document.querySelector("#accountDetail").textContent = cloud
-    ? `${state.user.email || "Signed in"} · ${status || "billing required"}`
+    ? `${state.user.email || "Signed in"} · ${state.cloudError || status || "billing required"}`
     : "Data is stored on this browser until Supabase is connected.";
   document.querySelector("#openAuth").textContent = cloud ? "Account" : "Sign in";
 }
@@ -660,7 +690,7 @@ function renderBillingGate() {
 }
 
 function isCloudWorkspace() {
-  return Boolean(supabaseClient && state.user && state.company.id !== DEMO_COMPANY_ID);
+  return Boolean(supabaseClient && state.user);
 }
 
 function hasBillingAccess() {

@@ -49,10 +49,27 @@ create table if not exists public.tasks (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.billing_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid references public.companies(id) on delete set null,
+  customer_email text,
+  stripe_customer_id text not null unique,
+  stripe_subscription_id text unique,
+  plan text,
+  status text not null default 'incomplete',
+  trial_start timestamptz,
+  trial_end timestamptz,
+  current_period_end timestamptz,
+  cancel_at_period_end boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 alter table public.companies enable row level security;
 alter table public.company_members enable row level security;
 alter table public.leads enable row level security;
 alter table public.tasks enable row level security;
+alter table public.billing_subscriptions enable row level security;
 
 create or replace function public.is_company_member(target_company_id uuid)
 returns boolean
@@ -141,7 +158,14 @@ on public.tasks
 for delete
 using (public.is_company_member(company_id));
 
+create policy "company members can read billing subscriptions"
+on public.billing_subscriptions
+for select
+using (company_id is not null and public.is_company_member(company_id));
+
 create index if not exists leads_company_id_idx on public.leads(company_id);
 create index if not exists leads_status_idx on public.leads(company_id, status);
 create index if not exists tasks_company_id_idx on public.tasks(company_id);
 create index if not exists company_members_user_id_idx on public.company_members(user_id);
+create index if not exists billing_subscriptions_customer_email_idx on public.billing_subscriptions(customer_email);
+create index if not exists billing_subscriptions_company_id_idx on public.billing_subscriptions(company_id);

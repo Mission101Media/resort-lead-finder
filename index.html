@@ -20,6 +20,7 @@
         </div>
         <div class="landing-actions">
           <button id="landingSignIn" class="button secondary" type="button">Sign in</button>
+          <button id="landingSignUp" class="button secondary" type="button">Sign up</button>
           <button id="openDemo" class="button primary" type="button">Open demo</button>
         </div>
       </header>
@@ -96,6 +97,37 @@
           </article>
         </div>
       </section>
+    </section>
+
+    <section id="authPage" class="auth-page hidden">
+      <div class="auth-shell">
+        <button id="authBackHome" class="button secondary" type="button">Back home</button>
+        <div class="brand auth-brand">
+          <div class="brand-mark" aria-hidden="true">R</div>
+          <div>
+            <h1>Resort Lead Finder</h1>
+            <p id="authPageSubtitle">Sign in to your sales workspace</p>
+          </div>
+        </div>
+
+        <div class="auth-card">
+          <div class="auth-card-heading">
+            <p class="eyebrow">Private company workspace</p>
+            <h2 id="authPageTitle">Sign in</h2>
+          </div>
+          <div class="auth-tabs">
+            <button class="button secondary active" data-page-auth-mode="signin" type="button">Sign in</button>
+            <button class="button secondary" data-page-auth-mode="signup" type="button">Sign up</button>
+          </div>
+          <div class="form-grid">
+            <label id="pageAuthCompanyWrap" class="wide hidden">Company name<input id="pageAuthCompany" placeholder="Rocking Horse Ranch" /></label>
+            <label class="wide">Email<input id="pageAuthEmail" type="email" placeholder="owner@company.com" /></label>
+            <label class="wide">Password<input id="pageAuthPassword" type="password" placeholder="Minimum 6 characters" /></label>
+          </div>
+          <p class="auth-note">Each company gets a separate workspace. Leads, tasks, and settings stay private to that company.</p>
+          <button id="pageSubmitAuth" class="button primary wide-button" type="button">Sign in</button>
+        </div>
+      </div>
     </section>
 
     <div id="appExperience" class="app-experience hidden">

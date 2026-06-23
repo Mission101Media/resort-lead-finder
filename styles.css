@@ -35,6 +35,58 @@ body {
   background: #f8faf8;
 }
 
+.auth-page {
+  min-height: 100vh;
+  background:
+    linear-gradient(90deg, rgba(20, 34, 29, 0.88), rgba(20, 34, 29, 0.32)),
+    url("https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1800&q=80") center/cover;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+}
+
+.auth-shell {
+  width: min(520px, 100%);
+  display: grid;
+  gap: 18px;
+}
+
+.auth-shell > .button {
+  justify-self: start;
+}
+
+.auth-brand {
+  color: #fff;
+}
+
+.auth-brand p {
+  color: rgba(255, 255, 255, 0.76);
+}
+
+.auth-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 16px;
+}
+
+.auth-card-heading {
+  display: grid;
+  gap: 4px;
+}
+
+.auth-card-heading h2 {
+  margin: 0;
+  font-size: 30px;
+}
+
+.wide-button {
+  width: 100%;
+}
+
 .landing-nav {
   height: 76px;
   padding: 0 28px;

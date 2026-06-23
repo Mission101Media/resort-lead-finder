@@ -134,9 +134,12 @@ function normalizeSupabaseUrl(value) {
 function bindEvents() {
   document.querySelector("#openDemo").addEventListener("click", openApp);
   document.querySelector("[data-open-app]").addEventListener("click", openApp);
-  document.querySelector("#landingSignIn").addEventListener("click", () => {
-    openApp();
-    authDialog.showModal();
+  document.querySelector("#landingSignIn").addEventListener("click", () => showAuthPage("signin"));
+  document.querySelector("#landingSignUp").addEventListener("click", () => showAuthPage("signup"));
+  document.querySelector("#authBackHome").addEventListener("click", showLanding);
+  document.querySelector("#pageSubmitAuth").addEventListener("click", submitPageAuth);
+  document.querySelectorAll("[data-page-auth-mode]").forEach((button) => {
+    button.addEventListener("click", () => setPageAuthMode(button.dataset.pageAuthMode));
   });
   document.querySelector("#backHome").addEventListener("click", showLanding);
   document.querySelector("[data-scroll-pricing]").addEventListener("click", () => {
@@ -215,13 +218,34 @@ function bindEvents() {
 
 function openApp() {
   landingPage.classList.add("hidden");
+  document.querySelector("#authPage").classList.add("hidden");
   appExperience.classList.remove("hidden");
 }
 
 function showLanding() {
   appExperience.classList.add("hidden");
+  document.querySelector("#authPage").classList.add("hidden");
   landingPage.classList.remove("hidden");
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function showAuthPage(mode) {
+  landingPage.classList.add("hidden");
+  appExperience.classList.add("hidden");
+  document.querySelector("#authPage").classList.remove("hidden");
+  setPageAuthMode(mode);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function setPageAuthMode(mode) {
+  state.authMode = mode;
+  document.querySelectorAll("[data-page-auth-mode]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.pageAuthMode === mode);
+  });
+  document.querySelector("#pageAuthCompanyWrap").classList.toggle("hidden", mode !== "signup");
+  document.querySelector("#authPageTitle").textContent = mode === "signup" ? "Create your company workspace" : "Sign in";
+  document.querySelector("#authPageSubtitle").textContent = mode === "signup" ? "Start a private sales workspace" : "Sign in to your sales workspace";
+  document.querySelector("#pageSubmitAuth").textContent = mode === "signup" ? "Create workspace" : "Sign in";
 }
 
 async function hydrateSession() {
@@ -307,6 +331,18 @@ async function submitAuth() {
   const password = document.querySelector("#authPassword").value;
   const companyName = document.querySelector("#authCompany").value.trim() || "New Resort Company";
 
+  await completeAuth(email, password, companyName, { closeModal: true });
+}
+
+async function submitPageAuth() {
+  const email = document.querySelector("#pageAuthEmail").value.trim();
+  const password = document.querySelector("#pageAuthPassword").value;
+  const companyName = document.querySelector("#pageAuthCompany").value.trim() || "New Resort Company";
+
+  await completeAuth(email, password, companyName, { openDashboard: true });
+}
+
+async function completeAuth(email, password, companyName, options = {}) {
   if (!email || !password) {
     showToast("Enter email and password");
     return;
@@ -318,9 +354,10 @@ async function submitAuth() {
       state.company = { ...state.company, name: companyName };
     }
     writeLocalStore();
-    authDialog.close();
+    if (options.closeModal) authDialog.close();
     showToast("Demo account ready");
     render();
+    if (options.openDashboard) openApp();
     return;
   }
 
@@ -341,9 +378,10 @@ async function submitAuth() {
     showToast("Signed in");
   }
 
-  authDialog.close();
+  if (options.closeModal) authDialog.close();
   await loadWorkspace();
   render();
+  if (options.openDashboard) openApp();
 }
 
 async function createRemoteCompany(name) {

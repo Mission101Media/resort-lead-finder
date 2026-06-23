@@ -210,6 +210,19 @@
         <button id="syncNow" class="button secondary" type="button">Sync</button>
       </section>
 
+      <section id="billingGate" class="billing-gate hidden">
+        <div>
+          <p class="eyebrow">Subscription required</p>
+          <h3>Start a 14-day trial to unlock this workspace.</h3>
+          <p>Your company dashboard opens when Stripe reports a trialing or active subscription for this workspace.</p>
+        </div>
+        <div class="billing-actions">
+          <button class="button primary checkout-button" data-plan="starter" type="button">Start Starter trial</button>
+          <button class="button secondary checkout-button" data-plan="team" type="button">Start Team trial</button>
+          <button id="refreshBilling" class="button secondary" type="button">Refresh billing</button>
+        </div>
+      </section>
+
       <section class="hero-band" aria-label="Resort sales focus">
         <div>
           <p>Today’s priority</p>

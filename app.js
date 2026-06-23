@@ -70,6 +70,7 @@ const sampleLeads = [
 const state = {
   company: { id: DEMO_COMPANY_ID, name: "Demo Resort Co.", plan: "Starter", role: "Owner" },
   user: null,
+  subscription: null,
   authMode: "signin",
   leads: [],
   tasks: [],
@@ -93,6 +94,7 @@ async function init() {
   await hydrateSession();
   await loadWorkspace();
   render();
+  await handleCheckoutReturn();
 }
 
 function initSupabase() {
@@ -164,6 +166,7 @@ function bindEvents() {
   document.querySelector("#generateLeads").addEventListener("click", generateLeads);
   document.querySelector("#exportCsv").addEventListener("click", exportCsv);
   document.querySelector("#syncNow").addEventListener("click", syncNow);
+  document.querySelector("#refreshBilling").addEventListener("click", refreshBilling);
   document.querySelector("#saveWorkspace").addEventListener("click", saveWorkspaceSettings);
   document.querySelector("#submitAuth").addEventListener("click", submitAuth);
   document.querySelector("#signOut").addEventListener("click", signOut);
@@ -223,6 +226,7 @@ function openApp() {
   landingPage.classList.add("hidden");
   document.querySelector("#authPage").classList.add("hidden");
   appExperience.classList.remove("hidden");
+  renderBillingGate();
 }
 
 function showLanding() {
@@ -251,6 +255,21 @@ function setPageAuthMode(mode) {
   document.querySelector("#pageSubmitAuth").textContent = mode === "signup" ? "Create workspace" : "Sign in";
 }
 
+async function handleCheckoutReturn() {
+  const checkoutStatus = new URLSearchParams(window.location.search).get("checkout");
+  if (checkoutStatus !== "success") return;
+
+  if (state.user) {
+    await refreshBilling();
+    openApp();
+  } else {
+    showAuthPage("signup");
+    showToast("Create your workspace with the same email used at checkout.");
+  }
+
+  window.history.replaceState({}, document.title, window.location.pathname);
+}
+
 async function startCheckout(plan) {
   if (plan === "pro") {
     window.location.href = "mailto:sales@resortleadfinder.com?subject=Resort%20Lead%20Finder%20Pro%20Plan";
@@ -262,9 +281,16 @@ async function startCheckout(plan) {
     const response = await fetch("/api/create-checkout-session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ plan })
+      body: JSON.stringify({
+        plan,
+        companyId: state.company.id !== DEMO_COMPANY_ID ? state.company.id : undefined,
+        customerEmail: state.user?.email
+      })
     });
-    const payload = await response.json();
+    const contentType = response.headers.get("content-type") || "";
+    const payload = contentType.includes("application/json")
+      ? await response.json()
+      : { error: "Checkout endpoint was not found. Make sure the api folder is uploaded to GitHub and Vercel has redeployed." };
 
     if (!response.ok || !payload.url) {
       throw new Error(payload.error || "Checkout is not configured yet.");
@@ -308,6 +334,7 @@ function loadLocalWorkspace() {
   const local = readLocalStore();
   state.company = local.company || state.company;
   state.user = local.user || null;
+  state.subscription = local.subscription || null;
   state.leads = (local.leads || sampleLeads).map(prepareLead);
   state.tasks = (local.tasks || sampleTasks()).map(prepareTask);
   writeLocalStore();
@@ -340,18 +367,24 @@ async function loadRemoteWorkspace() {
     role: membership.role || "Owner"
   };
 
-  const [{ data: leads, error: leadsError }, { data: tasks, error: tasksError }] = await Promise.all([
+  const [
+    { data: leads, error: leadsError },
+    { data: tasks, error: tasksError },
+    { data: subscriptions, error: subscriptionError }
+  ] = await Promise.all([
     supabaseClient.from("leads").select("*").order("created_at", { ascending: false }),
-    supabaseClient.from("tasks").select("*").order("created_at", { ascending: false })
+    supabaseClient.from("tasks").select("*").order("created_at", { ascending: false }),
+    supabaseClient.from("billing_subscriptions").select("*").order("updated_at", { ascending: false }).limit(1)
   ]);
 
-  if (leadsError || tasksError) {
-    showToast((leadsError || tasksError).message);
+  if (leadsError || tasksError || subscriptionError) {
+    showToast((leadsError || tasksError || subscriptionError).message);
     return;
   }
 
   state.leads = (leads || []).map(fromRemoteLead).map(prepareLead);
   state.tasks = (tasks || []).map(fromRemoteTask).map(prepareTask);
+  state.subscription = subscriptions?.[0] || null;
 }
 
 async function submitAuth() {
@@ -398,6 +431,7 @@ async function completeAuth(email, password, companyName, options = {}) {
     if (error) return showToast(error.message);
     state.user = data.user;
     await createRemoteCompany(companyName);
+    await linkBillingSubscription();
     showToast("Company workspace created");
   } else {
     const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
@@ -431,6 +465,28 @@ async function createRemoteCompany(name) {
   await seedRemoteCompany();
 }
 
+async function linkBillingSubscription() {
+  if (!supabaseClient || !state.user || state.company.id === DEMO_COMPANY_ID) return;
+
+  const { data } = await supabaseClient.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) return;
+
+  const response = await fetch("/api/link-subscription", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ companyId: state.company.id })
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    showToast(payload.error || "Billing link will complete after webhook sync.");
+  }
+}
+
 async function seedRemoteCompany() {
   if (!supabaseClient || state.company.id === DEMO_COMPANY_ID) return;
   const remoteLeads = sampleLeads.map((lead) => toRemoteLead(prepareLead(lead)));
@@ -440,6 +496,7 @@ async function seedRemoteCompany() {
 async function signOut() {
   if (supabaseClient) await supabaseClient.auth.signOut();
   state.user = null;
+  state.subscription = null;
   authDialog.close();
   loadLocalWorkspace();
   showToast("Signed out");
@@ -541,12 +598,20 @@ async function syncNow() {
   render();
 }
 
+async function refreshBilling() {
+  await linkBillingSubscription();
+  await loadWorkspace();
+  render();
+  showToast(hasBillingAccess() ? "Billing active" : "No active trial or subscription yet");
+}
+
 function render() {
   state.leads.forEach((lead) => {
     lead.score = document.querySelector("#autoScore").checked ? scoreLead(lead) : lead.score;
   });
   writeLocalStore();
   renderAccount();
+  renderBillingGate();
   renderMetrics();
   renderBestLeads();
   renderTasks();
@@ -559,13 +624,31 @@ function render() {
 
 function renderAccount() {
   const cloud = supabaseClient && state.user && state.company.id !== DEMO_COMPANY_ID;
+  const status = state.subscription?.status;
   document.querySelector("#workspaceName").textContent = state.company.name;
-  document.querySelector("#workspaceMode").textContent = cloud ? `${state.company.plan} cloud workspace` : "Local demo workspace";
+  document.querySelector("#workspaceMode").textContent = cloud
+    ? `${state.company.plan} workspace${status ? ` · ${status}` : ""}`
+    : "Local demo workspace";
   document.querySelector("#accountLabel").textContent = cloud ? state.company.name : "Demo mode";
   document.querySelector("#accountDetail").textContent = cloud
-    ? `${state.user.email} can only access records for this company.`
+    ? `${state.user.email} · ${status || "billing required"}`
     : "Data is stored on this browser until Supabase is connected.";
   document.querySelector("#openAuth").textContent = state.user ? "Account" : "Sign in";
+}
+
+function renderBillingGate() {
+  const locked = isCloudWorkspace() && !hasBillingAccess();
+  document.querySelector("#billingGate").classList.toggle("hidden", !locked);
+  appExperience.classList.toggle("billing-locked", locked);
+}
+
+function isCloudWorkspace() {
+  return Boolean(supabaseClient && state.user && state.company.id !== DEMO_COMPANY_ID);
+}
+
+function hasBillingAccess() {
+  if (!isCloudWorkspace()) return true;
+  return ["trialing", "active"].includes(state.subscription?.status);
 }
 
 function renderMetrics() {
@@ -865,6 +948,7 @@ function writeLocalStore() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     company: state.company,
     user: supabaseClient ? null : state.user,
+    subscription: supabaseClient ? null : state.subscription,
     leads: state.leads,
     tasks: state.tasks
   }));

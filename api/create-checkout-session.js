@@ -43,6 +43,13 @@ module.exports = async function handler(request, response) {
   params.append("cancel_url", `${appUrl}/?checkout=cancelled`);
   params.append("metadata[plan]", body.plan);
   params.append("subscription_data[metadata][plan]", body.plan);
+  if (body.companyId) {
+    params.append("metadata[company_id]", body.companyId);
+    params.append("subscription_data[metadata][company_id]", body.companyId);
+  }
+  if (body.customerEmail) {
+    params.append("customer_email", body.customerEmail);
+  }
 
   const stripeResponse = await fetch("https://api.stripe.com/v1/checkout/sessions", {
     method: "POST",

@@ -52,7 +52,8 @@ async function handleCheckoutCompleted(session, context) {
   await upsertBillingSubscription({
     subscription,
     customerEmail: session.customer_details?.email || session.customer_email || null,
-    plan: session.metadata?.plan || subscription.metadata?.plan || null
+    plan: session.metadata?.plan || subscription.metadata?.plan || null,
+    companyId: session.metadata?.company_id || subscription.metadata?.company_id || null
   }, context);
 }
 
@@ -60,16 +61,16 @@ async function handleSubscriptionUpdated(subscription, context) {
   await upsertBillingSubscription({
     subscription,
     customerEmail: null,
-    plan: subscription.metadata?.plan || null
+    plan: subscription.metadata?.plan || null,
+    companyId: subscription.metadata?.company_id || null
   }, context);
 }
 
-async function upsertBillingSubscription({ subscription, customerEmail, plan }, context) {
+async function upsertBillingSubscription({ subscription, customerEmail, plan, companyId }, context) {
   const customerId = typeof subscription.customer === "string" ? subscription.customer : subscription.customer?.id;
   const email = customerEmail || await fetchStripeCustomerEmail(customerId, context.stripeSecretKey);
 
   const payload = {
-    company_id: null,
     customer_email: email,
     stripe_customer_id: customerId,
     stripe_subscription_id: subscription.id,
@@ -81,6 +82,9 @@ async function upsertBillingSubscription({ subscription, customerEmail, plan }, 
     cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
     updated_at: new Date().toISOString()
   };
+  if (companyId) {
+    payload.company_id = companyId;
+  }
 
   const result = await fetch(`${context.supabaseUrl}/rest/v1/billing_subscriptions?on_conflict=stripe_customer_id`, {
     method: "POST",

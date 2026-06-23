@@ -111,6 +111,19 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 
 Never put `SUPABASE_SERVICE_ROLE_KEY` in browser files or GitHub. It belongs only in Vercel environment variables.
 
+### Subscription Access
+
+The app checks the signed-in company workspace against `billing_subscriptions`. Dashboard access is allowed only when the subscription status is:
+
+```txt
+trialing
+active
+```
+
+Other statuses, including `incomplete`, `past_due`, `canceled`, and `unpaid`, show a billing screen instead of the sales dashboard.
+
+If a customer starts checkout before creating their app account, `api/link-subscription.js` links the Stripe subscription to the company after signup when the email address matches.
+
 ## How Company Data Is Separated
 
 Every company has a row in `companies`. Every user belongs to one or more companies through `company_members`. Every lead and task has a `company_id`.

@@ -484,6 +484,44 @@ textarea {
   font-size: 13px;
 }
 
+.billing-gate {
+  background: #fff;
+  border: 1px solid rgba(186, 127, 29, 0.35);
+  border-radius: 8px;
+  padding: 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: center;
+}
+
+.billing-gate h3,
+.billing-gate p {
+  margin: 0;
+}
+
+.billing-gate h3 {
+  font-size: 26px;
+  line-height: 1.14;
+}
+
+.billing-gate > div:first-child {
+  display: grid;
+  gap: 8px;
+}
+
+.billing-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.billing-locked .hero-band,
+.billing-locked .view {
+  display: none;
+}
+
 .hero-band p {
   margin: 0 0 6px;
   color: rgba(255, 255, 255, 0.76);
@@ -775,6 +813,7 @@ menu {
 
   .split-layout,
   .results-grid,
+  .billing-gate,
   .proof-band,
   .pricing-grid {
     grid-template-columns: 1fr;
@@ -789,6 +828,7 @@ menu {
 
   .topbar,
   .landing-nav,
+  .billing-gate,
   .lead-card header,
   .task-row {
     align-items: stretch;

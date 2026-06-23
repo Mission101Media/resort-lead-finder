@@ -73,6 +73,44 @@ subscription_data[trial_period_days]=14
 
 That gives new subscribers a 14-day trial before the recurring monthly plan starts. The checkout flow collects a payment method so Stripe can bill automatically after the trial.
 
+### Stripe Webhook
+
+The app also includes `api/stripe-webhook.js`. This endpoint lets Stripe tell the app when a checkout succeeds, when a trial starts, when a subscription becomes active, and when a subscription is canceled or past due.
+
+1. In Stripe, go to **Developers > Webhooks**.
+2. Click **Add endpoint**.
+3. Use this endpoint URL:
+
+```txt
+https://your-domain.com/api/stripe-webhook
+```
+
+4. Select these events:
+
+```txt
+checkout.session.completed
+customer.subscription.created
+customer.subscription.updated
+customer.subscription.deleted
+```
+
+5. Save the endpoint.
+6. Copy the webhook signing secret. It starts with `whsec_`.
+7. Add it to Vercel as:
+
+```txt
+STRIPE_WEBHOOK_SECRET=whsec_your_webhook_signing_secret
+```
+
+The webhook writes subscription records into the `billing_subscriptions` table in Supabase. It also needs these Vercel environment variables:
+
+```txt
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+```
+
+Never put `SUPABASE_SERVICE_ROLE_KEY` in browser files or GitHub. It belongs only in Vercel environment variables.
+
 ## How Company Data Is Separated
 
 Every company has a row in `companies`. Every user belongs to one or more companies through `company_members`. Every lead and task has a `company_id`.

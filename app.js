@@ -145,6 +145,9 @@ function bindEvents() {
   document.querySelector("[data-scroll-pricing]").addEventListener("click", () => {
     document.querySelector("#plans").scrollIntoView({ behavior: "smooth", block: "start" });
   });
+  document.querySelectorAll(".checkout-button").forEach((button) => {
+    button.addEventListener("click", () => startCheckout(button.dataset.plan));
+  });
 
   navItems.forEach((item) => {
     item.addEventListener("click", () => {
@@ -246,6 +249,31 @@ function setPageAuthMode(mode) {
   document.querySelector("#authPageTitle").textContent = mode === "signup" ? "Create your company workspace" : "Sign in";
   document.querySelector("#authPageSubtitle").textContent = mode === "signup" ? "Start a private sales workspace" : "Sign in to your sales workspace";
   document.querySelector("#pageSubmitAuth").textContent = mode === "signup" ? "Create workspace" : "Sign in";
+}
+
+async function startCheckout(plan) {
+  if (plan === "pro") {
+    window.location.href = "mailto:sales@resortleadfinder.com?subject=Resort%20Lead%20Finder%20Pro%20Plan";
+    return;
+  }
+
+  try {
+    showToast("Opening secure checkout...");
+    const response = await fetch("/api/create-checkout-session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan })
+    });
+    const payload = await response.json();
+
+    if (!response.ok || !payload.url) {
+      throw new Error(payload.error || "Checkout is not configured yet.");
+    }
+
+    window.location.href = payload.url;
+  } catch (error) {
+    showToast(error.message);
+  }
 }
 
 async function hydrateSession() {

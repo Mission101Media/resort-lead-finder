@@ -34,6 +34,45 @@ http://127.0.0.1:5173
 5. Fill in your Supabase project URL and public anon key.
 6. Deploy the folder to Vercel, Netlify, or Cloudflare Pages.
 
+## Stripe Subscriptions
+
+The homepage plan buttons use Stripe Checkout and a 14-day subscription trial. The secure checkout endpoint lives at `api/create-checkout-session.js`, which is designed for Vercel Functions.
+
+### Create Products and Prices
+
+1. Open the Stripe Dashboard.
+2. Create a product named `Resort Lead Finder Starter`.
+3. Add a recurring monthly price, for example `$199/month`.
+4. Copy the price ID. It starts with `price_`.
+5. Create another product named `Resort Lead Finder Team`.
+6. Add a recurring monthly price, for example `$499/month`.
+7. Copy that price ID too.
+
+### Add Vercel Environment Variables
+
+In Vercel, open the project, then go to **Settings > Environment Variables** and add:
+
+```txt
+STRIPE_SECRET_KEY=sk_live_or_test_key_from_stripe
+STRIPE_STARTER_PRICE_ID=price_your_starter_monthly_price
+STRIPE_TEAM_PRICE_ID=price_your_team_monthly_price
+APP_URL=https://your-vercel-app.vercel.app
+```
+
+Use Stripe test keys first. Never put `STRIPE_SECRET_KEY` in `config.js`, GitHub, or any browser file.
+
+After adding environment variables, redeploy the Vercel project.
+
+### Trial Behavior
+
+Checkout creates subscriptions with:
+
+```txt
+subscription_data[trial_period_days]=14
+```
+
+That gives new subscribers a 14-day trial before the recurring monthly plan starts. The checkout flow collects a payment method so Stripe can bill automatically after the trial.
+
 ## How Company Data Is Separated
 
 Every company has a row in `companies`. Every user belongs to one or more companies through `company_members`. Every lead and task has a `company_id`.

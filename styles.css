@@ -196,6 +196,11 @@ body {
   gap: 10px;
 }
 
+.price-card .button {
+  margin-top: 8px;
+  align-self: end;
+}
+
 .feature-card strong,
 .price-card strong {
   font-size: 20px;

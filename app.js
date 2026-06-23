@@ -98,22 +98,39 @@ async function init() {
 }
 
 function initSupabase() {
+  const appConfig = window.APP_CONFIG || {};
   config = {
-    supabaseUrl: document.querySelector('meta[name="app:supabase-url"]')?.content || "",
-    supabaseAnonKey: document.querySelector('meta[name="app:supabase-anon-key"]')?.content || "",
-    ...(window.APP_CONFIG || {})
+    supabaseUrl: firstNonEmpty(appConfig.supabaseUrl, document.querySelector('meta[name="app:supabase-url"]')?.content),
+    supabaseAnonKey: firstNonEmpty(appConfig.supabaseAnonKey, document.querySelector('meta[name="app:supabase-anon-key"]')?.content),
+    stripePublishableKey: appConfig.stripePublishableKey || ""
   };
   const supabaseUrl = normalizeSupabaseUrl(config.supabaseUrl || "");
   const supabaseKey = String(config.supabaseAnonKey || "").trim();
 
   if (!supabaseUrl || !supabaseKey) return;
 
-  if (!window.supabase) {
+  const supabaseLibrary = getSupabaseLibrary();
+  if (!supabaseLibrary) {
     showToast("Supabase library did not load. Check your internet connection or CDN access.");
     return;
   }
 
-  supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+  supabaseClient = supabaseLibrary.createClient(supabaseUrl, supabaseKey);
+}
+
+function firstNonEmpty(...values) {
+  return values.find((value) => String(value || "").trim()) || "";
+}
+
+function getSupabaseLibrary() {
+  if (window.supabase?.createClient) return window.supabase;
+  if (globalThis.supabase?.createClient) return globalThis.supabase;
+  try {
+    if (supabase?.createClient) return supabase;
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 function normalizeSupabaseUrl(value) {
@@ -631,9 +648,9 @@ function renderAccount() {
     : "Local demo workspace";
   document.querySelector("#accountLabel").textContent = cloud ? state.company.name : "Demo mode";
   document.querySelector("#accountDetail").textContent = cloud
-    ? `${state.user.email} · ${status || "billing required"}`
+    ? `${state.user.email || "Signed in"} · ${status || "billing required"}`
     : "Data is stored on this browser until Supabase is connected.";
-  document.querySelector("#openAuth").textContent = state.user ? "Account" : "Sign in";
+  document.querySelector("#openAuth").textContent = cloud ? "Account" : "Sign in";
 }
 
 function renderBillingGate() {

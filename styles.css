@@ -225,13 +225,23 @@ body {
   color: var(--muted);
 }
 
-.site-footer strong {
-  color: var(--ink);
+.privacy-disclosure {
+  max-width: 860px;
 }
 
-.site-footer p {
+.privacy-disclosure summary {
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 800;
+  list-style-position: inside;
+}
+
+.privacy-disclosure summary::marker {
+  color: var(--accent);
+}
+
+.privacy-disclosure p {
   margin: 8px 0 0;
-  max-width: 860px;
   line-height: 1.55;
 }
 

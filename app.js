@@ -154,8 +154,14 @@ function normalizeSupabaseUrl(value) {
 function bindEvents() {
   document.querySelector("#openDemo").addEventListener("click", openApp);
   document.querySelector("[data-open-app]").addEventListener("click", openApp);
-  document.querySelector("#landingSignIn").addEventListener("click", () => showAuthPage("signin"));
-  document.querySelector("#landingSignUp").addEventListener("click", () => showAuthPage("signup"));
+  document.querySelector("#landingSignIn").addEventListener("click", () => {
+    if (isCloudWorkspace()) openApp();
+    else showAuthPage("signin");
+  });
+  document.querySelector("#landingSignUp").addEventListener("click", () => {
+    if (isCloudWorkspace()) authDialog.showModal();
+    else showAuthPage("signup");
+  });
   document.querySelector("#authBackHome").addEventListener("click", showLanding);
   document.querySelector("#pageSubmitAuth").addEventListener("click", submitPageAuth);
   document.querySelectorAll("[data-page-auth-mode]").forEach((button) => {
@@ -246,13 +252,14 @@ function openApp() {
   landingPage.classList.add("hidden");
   document.querySelector("#authPage").classList.add("hidden");
   appExperience.classList.remove("hidden");
-  renderBillingGate();
+  render();
 }
 
 function showLanding() {
   appExperience.classList.add("hidden");
   document.querySelector("#authPage").classList.add("hidden");
   landingPage.classList.remove("hidden");
+  renderLandingSession();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -403,11 +410,14 @@ async function loadWorkspace() {
 
 function loadLocalWorkspace() {
   const local = readLocalStore();
-  state.company = local.company || state.company;
-  state.user = local.user || null;
-  state.subscription = local.subscription || null;
-  state.leads = (local.leads || sampleLeads).map(prepareLead);
-  state.tasks = (local.tasks || sampleTasks()).map(prepareTask);
+  const canUseLocalStore = !supabaseClient || local.user;
+  state.company = canUseLocalStore
+    ? local.company || state.company
+    : { id: DEMO_COMPANY_ID, name: "Demo Resort Co.", plan: "Starter", role: "Owner" };
+  state.user = canUseLocalStore ? local.user || null : null;
+  state.subscription = canUseLocalStore ? local.subscription || null : null;
+  state.leads = (canUseLocalStore ? local.leads || sampleLeads : sampleLeads).map(prepareLead);
+  state.tasks = (canUseLocalStore ? local.tasks || sampleTasks() : sampleTasks()).map(prepareTask);
   writeLocalStore();
 }
 
@@ -464,7 +474,12 @@ async function loadRemoteWorkspace() {
     return;
   }
 
-  state.leads = (leads || []).map(fromRemoteLead).map(prepareLead);
+  if (isLegacySampleLeadSet(leads || [])) {
+    await removeLegacySampleLeads();
+    state.leads = [];
+  } else {
+    state.leads = (leads || []).map(fromRemoteLead).map(prepareLead);
+  }
   state.tasks = (tasks || []).map(fromRemoteTask).map(prepareTask);
   state.subscription = subscriptions?.[0] || null;
 }
@@ -476,6 +491,17 @@ function fetchMembership() {
     .eq("user_id", state.user.id)
     .limit(1)
     .maybeSingle();
+}
+
+function isLegacySampleLeadSet(leads) {
+  if (leads.length !== sampleLeads.length) return false;
+  const sampleEmails = new Set(sampleLeads.map((lead) => lead.email));
+  return leads.every((lead) => sampleEmails.has(lead.email));
+}
+
+async function removeLegacySampleLeads() {
+  const sampleEmails = sampleLeads.map((lead) => lead.email);
+  await supabaseClient.from("leads").delete().in("email", sampleEmails);
 }
 
 async function submitAuth() {
@@ -537,6 +563,8 @@ async function completeAuth(email, password, companyName, options = {}) {
 
   if (options.closeModal) authDialog.close();
   await loadWorkspace();
+  await linkBillingSubscription();
+  await loadWorkspace();
   render();
   if (options.openDashboard) openApp();
 }
@@ -557,7 +585,6 @@ async function createRemoteCompany(name) {
   if (memberError) return showToast(memberError.message);
 
   state.company = { id: company.id, name: company.name, plan: company.plan, role: "Owner" };
-  await seedRemoteCompany();
 }
 
 async function linkBillingSubscription() {
@@ -580,12 +607,6 @@ async function linkBillingSubscription() {
     const payload = await response.json().catch(() => ({}));
     showToast(payload.error || "Billing link will complete after webhook sync.");
   }
-}
-
-async function seedRemoteCompany() {
-  if (!supabaseClient || state.company.id === DEMO_COMPANY_ID) return;
-  const remoteLeads = sampleLeads.map((lead) => toRemoteLead(prepareLead(lead)));
-  await supabaseClient.from("leads").insert(remoteLeads);
 }
 
 async function signOut() {
@@ -710,6 +731,7 @@ function render() {
   });
   writeLocalStore();
   renderAccount();
+  renderLandingSession();
   renderBillingGate();
   renderMetrics();
   renderBestLeads();
@@ -733,6 +755,13 @@ function renderAccount() {
     ? `${state.user.email || "Signed in"} · ${state.cloudError || status || "billing required"}`
     : "Data is stored on this browser until Supabase is connected.";
   document.querySelector("#openAuth").textContent = cloud ? "Account" : "Sign in";
+}
+
+function renderLandingSession() {
+  const cloud = Boolean(supabaseClient && state.user);
+  document.querySelector("#landingSignIn").textContent = cloud ? "Dashboard" : "Sign in";
+  document.querySelector("#landingSignUp").textContent = cloud ? "Account" : "Sign up";
+  document.querySelector("#openDemo").textContent = cloud ? "Open dashboard" : "Open demo";
 }
 
 function renderBillingGate() {
@@ -1044,6 +1073,8 @@ function readLocalStore() {
 }
 
 function writeLocalStore() {
+  if (supabaseClient && state.user) return;
+
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     company: state.company,
     user: supabaseClient ? null : state.user,

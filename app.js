@@ -185,6 +185,8 @@ function bindEvents() {
   document.querySelector("#exportCsv").addEventListener("click", exportCsv);
   document.querySelector("#syncNow").addEventListener("click", syncNow);
   document.querySelector("#refreshBilling").addEventListener("click", refreshBilling);
+  document.querySelector("#manageBilling").addEventListener("click", openBillingPortal);
+  document.querySelector("#gateManageBilling").addEventListener("click", openBillingPortal);
   document.querySelector("#saveWorkspace").addEventListener("click", saveWorkspaceSettings);
   document.querySelector("#submitAuth").addEventListener("click", submitAuth);
   document.querySelector("#signOut").addEventListener("click", signOut);
@@ -274,7 +276,19 @@ function setPageAuthMode(mode) {
 }
 
 async function handleCheckoutReturn() {
-  const checkoutStatus = new URLSearchParams(window.location.search).get("checkout");
+  const params = new URLSearchParams(window.location.search);
+  const checkoutStatus = params.get("checkout");
+  const billingStatus = params.get("billing");
+
+  if (billingStatus === "returned") {
+    if (state.user) {
+      await refreshBilling();
+      openApp();
+    }
+    window.history.replaceState({}, document.title, window.location.pathname);
+    return;
+  }
+
   if (checkoutStatus !== "success") return;
 
   if (state.user) {
@@ -312,6 +326,44 @@ async function startCheckout(plan) {
 
     if (!response.ok || !payload.url) {
       throw new Error(payload.error || "Checkout is not configured yet.");
+    }
+
+    window.location.href = payload.url;
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+async function openBillingPortal() {
+  if (!isCloudWorkspace() || state.company.id === DEMO_COMPANY_ID || state.company.id.startsWith("cloud-")) {
+    showToast("Sign in to your company workspace to manage billing.");
+    return;
+  }
+
+  try {
+    showToast("Opening secure billing portal...");
+    const { data } = await supabaseClient.auth.getSession();
+    const token = data?.session?.access_token;
+    if (!token) {
+      showToast("Please sign in again to manage billing.");
+      return;
+    }
+
+    const response = await fetch("/api/create-customer-portal-session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ companyId: state.company.id })
+    });
+    const contentType = response.headers.get("content-type") || "";
+    const payload = contentType.includes("application/json")
+      ? await response.json()
+      : { error: "Billing portal endpoint was not found. Make sure the api folder is uploaded and Vercel has redeployed." };
+
+    if (!response.ok || !payload.url) {
+      throw new Error(payload.error || "Billing portal is not configured yet.");
     }
 
     window.location.href = payload.url;

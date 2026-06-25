@@ -100,6 +100,14 @@
           </article>
         </div>
       </section>
+
+      <footer class="site-footer">
+        <div>
+          <strong>Privacy disclaimer</strong>
+          <p>Resort Lead Finder stores account, company, lead, billing status, and workspace activity information to provide the service. Payment details are handled by Stripe and are not stored in this app. Do not upload sensitive medical, financial, or government ID information. Customer and lead data should only be used for lawful sales follow-up by the company that owns the workspace.</p>
+        </div>
+        <span>Cancel a trial or paid plan anytime from Manage billing after signing in.</span>
+      </footer>
     </section>
 
     <section id="authPage" class="auth-page hidden">
@@ -207,7 +215,10 @@
           <strong id="accountLabel">Demo mode</strong>
           <span id="accountDetail">Data is stored on this browser until Supabase is connected.</span>
         </div>
-        <button id="syncNow" class="button secondary" type="button">Sync</button>
+        <div class="workspace-actions">
+          <button id="manageBilling" class="button secondary" type="button">Manage billing</button>
+          <button id="syncNow" class="button secondary" type="button">Sync</button>
+        </div>
       </section>
 
       <section id="billingGate" class="billing-gate hidden">
@@ -219,6 +230,7 @@
         <div class="billing-actions">
           <button class="button primary checkout-button" data-plan="starter" type="button">Start Starter trial</button>
           <button class="button secondary checkout-button" data-plan="team" type="button">Start Team trial</button>
+          <button id="gateManageBilling" class="button secondary" type="button">Manage billing / cancel</button>
           <button id="refreshBilling" class="button secondary" type="button">Refresh billing</button>
         </div>
       </section>

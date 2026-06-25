@@ -213,6 +213,34 @@ body {
   line-height: 1.5;
 }
 
+.site-footer {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 28px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: start;
+  color: var(--muted);
+}
+
+.site-footer strong {
+  color: var(--ink);
+}
+
+.site-footer p {
+  margin: 8px 0 0;
+  max-width: 860px;
+  line-height: 1.55;
+}
+
+.site-footer span {
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: right;
+}
+
 .proof-band {
   max-width: none;
   background: #14221d;
@@ -472,9 +500,16 @@ textarea {
   gap: 16px;
 }
 
-.workspace-strip div {
+.workspace-strip > div:first-child {
   display: grid;
   gap: 2px;
+}
+
+.workspace-strip .workspace-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .workspace-strip span,
@@ -815,8 +850,13 @@ menu {
   .results-grid,
   .billing-gate,
   .proof-band,
-  .pricing-grid {
+  .pricing-grid,
+  .site-footer {
     grid-template-columns: 1fr;
+  }
+
+  .site-footer span {
+    text-align: left;
   }
 }
 
@@ -851,6 +891,7 @@ menu {
 
   .topbar-actions,
   .workspace-strip,
+  .workspace-actions,
   .nav,
   .metrics-grid,
   .feature-grid,

@@ -106,7 +106,7 @@
           <summary>Privacy disclaimer</summary>
           <p>Resort Lead Finder stores account, company, lead, billing status, and workspace activity information to provide the service. Payment details are handled by Stripe and are not stored in this app. Do not upload sensitive medical, financial, or government ID information. Customer and lead data should only be used for lawful sales follow-up by the company that owns the workspace.</p>
         </details>
-        <span>Cancel a trial or paid plan anytime from Manage billing after signing in.</span>
+        <span>Cancel a trial or paid plan anytime from Manage billing after signing in. Support: <a href="mailto:support@resortleadfinder.com">support@resortleadfinder.com</a></span>
       </footer>
     </section>
 
@@ -215,23 +215,13 @@
           <strong id="accountLabel">Demo mode</strong>
           <span id="accountDetail">Data is stored on this browser until Supabase is connected.</span>
         </div>
-        <div class="workspace-actions">
-          <button id="manageBilling" class="button secondary" type="button">Manage billing</button>
-          <button id="syncNow" class="button secondary" type="button">Sync</button>
-        </div>
       </section>
 
       <section id="billingGate" class="billing-gate hidden">
         <div>
-          <p class="eyebrow">Subscription required</p>
-          <h3>Start a 14-day trial to unlock this workspace.</h3>
-          <p>Your company dashboard opens when Stripe reports a trialing or active subscription for this workspace.</p>
-        </div>
-        <div class="billing-actions">
-          <button class="button primary checkout-button" data-plan="starter" type="button">Start Starter trial</button>
-          <button class="button secondary checkout-button" data-plan="team" type="button">Start Team trial</button>
-          <button id="gateManageBilling" class="button secondary" type="button">Manage billing / cancel</button>
-          <button id="refreshBilling" class="button secondary" type="button">Refresh billing</button>
+          <p class="eyebrow">Billing</p>
+          <h3>Choose a plan when you are ready.</h3>
+          <p>Your workspace is open. Add a trial or manage billing from Settings.</p>
         </div>
       </section>
 
@@ -413,13 +403,23 @@
 
           <section class="panel">
             <div class="panel-heading">
-              <h3>Data separation</h3>
+              <h3>Billing and support</h3>
             </div>
-            <div class="security-list">
-              <div><strong>Company ID</strong><span id="tenantIdLabel">local-demo</span></div>
-              <div><strong>Lead visibility</strong><span>Only rows matching this company workspace</span></div>
-              <div><strong>Database guard</strong><span>Supabase Row Level Security in supabase/schema.sql</span></div>
-              <div><strong>Billing owner</strong><span>Stripe customer is tied to the company, not one device</span></div>
+            <div class="account-list">
+              <div>
+                <strong>Plan status</strong>
+                <span id="billingStatusLabel">No active trial or plan yet</span>
+              </div>
+              <div>
+                <strong>Need help?</strong>
+                <span>Email <a href="mailto:support@resortleadfinder.com">support@resortleadfinder.com</a></span>
+              </div>
+            </div>
+            <div class="settings-actions">
+              <button class="button primary checkout-button" data-plan="starter" type="button">Start Starter trial</button>
+              <button class="button secondary checkout-button" data-plan="team" type="button">Start Team trial</button>
+              <button id="manageBilling" class="button secondary" type="button">Manage billing / cancel</button>
+              <button id="refreshBilling" class="button secondary" type="button">Refresh billing</button>
             </div>
           </section>
         </div>

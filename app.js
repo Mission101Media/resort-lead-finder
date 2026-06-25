@@ -189,10 +189,8 @@ function bindEvents() {
   document.querySelector("#saveLead").addEventListener("click", addLeadFromForm);
   document.querySelector("#generateLeads").addEventListener("click", generateLeads);
   document.querySelector("#exportCsv").addEventListener("click", exportCsv);
-  document.querySelector("#syncNow").addEventListener("click", syncNow);
   document.querySelector("#refreshBilling").addEventListener("click", refreshBilling);
   document.querySelector("#manageBilling").addEventListener("click", openBillingPortal);
-  document.querySelector("#gateManageBilling").addEventListener("click", openBillingPortal);
   document.querySelector("#saveWorkspace").addEventListener("click", saveWorkspaceSettings);
   document.querySelector("#submitAuth").addEventListener("click", submitAuth);
   document.querySelector("#signOut").addEventListener("click", signOut);
@@ -344,6 +342,10 @@ async function startCheckout(plan) {
 async function openBillingPortal() {
   if (!isCloudWorkspace() || state.company.id === DEMO_COMPANY_ID || state.company.id.startsWith("cloud-")) {
     showToast("Sign in to your company workspace to manage billing.");
+    return;
+  }
+  if (!state.subscription?.stripe_customer_id) {
+    showToast("Start a trial first, then Manage billing will open your cancellation page.");
     return;
   }
 
@@ -752,7 +754,7 @@ function renderAccount() {
     : "Local demo workspace";
   document.querySelector("#accountLabel").textContent = cloud ? state.company.name : "Demo mode";
   document.querySelector("#accountDetail").textContent = cloud
-    ? `${state.user.email || "Signed in"} · ${state.cloudError || status || "billing required"}`
+    ? `${state.user.email || "Signed in"} · ${state.cloudError || status || "workspace ready"}`
     : "Data is stored on this browser until Supabase is connected.";
   document.querySelector("#openAuth").textContent = cloud ? "Account" : "Sign in";
 }
@@ -765,9 +767,8 @@ function renderLandingSession() {
 }
 
 function renderBillingGate() {
-  const locked = isCloudWorkspace() && !hasBillingAccess();
-  document.querySelector("#billingGate").classList.toggle("hidden", !locked);
-  appExperience.classList.toggle("billing-locked", locked);
+  document.querySelector("#billingGate").classList.add("hidden");
+  appExperience.classList.remove("billing-locked");
 }
 
 function isCloudWorkspace() {
@@ -870,7 +871,13 @@ function renderSettings() {
   document.querySelector("#companyNameInput").value = state.company.name;
   document.querySelector("#planInput").value = state.company.plan || "Starter";
   document.querySelector("#defaultRoleInput").value = state.company.role || "Owner";
-  document.querySelector("#tenantIdLabel").textContent = state.company.id;
+  const status = state.subscription?.status;
+  const billingLabel = hasBillingAccess()
+    ? `Your ${status} plan is connected.`
+    : "No active trial or plan is connected yet.";
+  document.querySelector("#billingStatusLabel").textContent = isCloudWorkspace()
+    ? billingLabel
+    : "Sign in to manage billing.";
 }
 
 function leadCard(lead) {

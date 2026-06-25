@@ -524,7 +524,7 @@ textarea {
 
 .workspace-strip span,
 .auth-note,
-.security-list span {
+.account-list span {
   color: var(--muted);
   font-size: 13px;
 }
@@ -723,17 +723,29 @@ label {
   display: none;
 }
 
-.security-list {
+.account-list {
   display: grid;
   gap: 12px;
 }
 
-.security-list div {
+.account-list div {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 12px;
   display: grid;
   gap: 4px;
+}
+
+.account-list a {
+  color: var(--accent-strong);
+  font-weight: 800;
+}
+
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
 }
 
 label {

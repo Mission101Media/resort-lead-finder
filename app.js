@@ -73,6 +73,7 @@ const state = {
   subscription: null,
   cloudError: null,
   authMode: "signin",
+  editingLeadId: null,
   leads: [],
   tasks: [],
   loading: false
@@ -184,7 +185,8 @@ function bindEvents() {
     });
   });
 
-  document.querySelector("#openNewLead").addEventListener("click", () => leadDialog.showModal());
+  document.querySelector("#openNewLead").addEventListener("click", () => openLeadDialog());
+  leadDialog.addEventListener("close", cancelLeadDialog);
   document.querySelector("#openAuth").addEventListener("click", () => authDialog.showModal());
   document.querySelector("#saveLead").addEventListener("click", addLeadFromForm);
   document.querySelector("#generateLeads").addEventListener("click", generateLeads);
@@ -237,6 +239,19 @@ function bindEvents() {
         await persistTask(task);
       }
       render();
+    }
+  });
+
+  document.addEventListener("click", async (event) => {
+    const editButton = event.target.closest("[data-edit-lead]");
+    if (editButton) {
+      openLeadDialog(editButton.dataset.editLead);
+      return;
+    }
+
+    const deleteButton = event.target.closest("[data-delete-lead]");
+    if (deleteButton) {
+      await deleteLead(deleteButton.dataset.deleteLead);
     }
   });
 
@@ -412,14 +427,11 @@ async function loadWorkspace() {
 
 function loadLocalWorkspace() {
   const local = readLocalStore();
-  const canUseLocalStore = !supabaseClient || local.user;
-  state.company = canUseLocalStore
-    ? local.company || state.company
-    : { id: DEMO_COMPANY_ID, name: "Demo Resort Co.", plan: "Starter", role: "Owner" };
-  state.user = canUseLocalStore ? local.user || null : null;
-  state.subscription = canUseLocalStore ? local.subscription || null : null;
-  state.leads = (canUseLocalStore ? local.leads || sampleLeads : sampleLeads).map(prepareLead);
-  state.tasks = (canUseLocalStore ? local.tasks || sampleTasks() : sampleTasks()).map(prepareTask);
+  state.company = local.company || { id: DEMO_COMPANY_ID, name: "Demo Resort Co.", plan: "Starter", role: "Owner" };
+  state.user = supabaseClient ? null : local.user || null;
+  state.subscription = supabaseClient ? null : local.subscription || null;
+  state.leads = (local.leads || sampleLeads).map(prepareLead);
+  state.tasks = (local.tasks || sampleTasks()).map(prepareTask);
   writeLocalStore();
 }
 
@@ -634,8 +646,28 @@ function isLocalDemoHost() {
   return ["localhost", "127.0.0.1", ""].includes(window.location.hostname);
 }
 
+function openLeadDialog(leadId = null) {
+  const lead = state.leads.find((item) => item.id === leadId);
+  state.editingLeadId = lead?.id || null;
+
+  document.querySelector("#leadDialogTitle").textContent = lead ? "Edit lead" : "Add lead";
+  document.querySelector("#saveLead").textContent = lead ? "Save changes" : "Save lead";
+  document.querySelector("#leadName").value = lead?.name || "";
+  document.querySelector("#leadEmail").value = lead?.email || "";
+  document.querySelector("#leadPhone").value = lead?.phone || "";
+  document.querySelector("#leadDestination").value = lead?.destination || "Beach";
+  document.querySelector("#leadGroup").value = lead?.group || "Family";
+  document.querySelector("#leadBudget").value = lead?.budget || 4500;
+  document.querySelector("#leadDate").value = lead?.travelDate || "";
+  document.querySelector("#leadStatus").value = lead?.status || "New";
+  document.querySelector("#leadNotes").value = lead?.notes || "";
+  leadDialog.showModal();
+}
+
 async function addLeadFromForm() {
+  const existingLead = state.leads.find((item) => item.id === state.editingLeadId);
   const lead = prepareLead({
+    id: state.editingLeadId || undefined,
     name: document.querySelector("#leadName").value,
     email: document.querySelector("#leadEmail").value,
     phone: document.querySelector("#leadPhone").value,
@@ -645,17 +677,24 @@ async function addLeadFromForm() {
     travelDate: document.querySelector("#leadDate").value,
     status: document.querySelector("#leadStatus").value,
     notes: document.querySelector("#leadNotes").value,
-    source: "Manual"
+    source: existingLead?.source || "Manual"
   });
 
-  state.leads.unshift(lead);
+  const existingIndex = state.leads.findIndex((item) => item.id === lead.id || (lead.email && item.email.toLowerCase() === lead.email.toLowerCase()));
+  if (existingIndex >= 0) {
+    lead.id = state.leads[existingIndex].id;
+    state.leads[existingIndex] = { ...state.leads[existingIndex], ...lead };
+  } else {
+    state.leads.unshift(lead);
+  }
   await persistLead(lead);
 
-  if (document.querySelector("#autoTasks").checked) {
+  if (existingIndex < 0 && document.querySelector("#autoTasks").checked) {
     const task = prepareTask({
       leadId: lead.id,
       leadEmail: lead.email,
       text: lead.score >= 75 ? "Call while interest is hot" : "Send intro package email",
+      priority: lead.score >= 75 ? "High" : "Normal",
       done: false
     });
     state.tasks.unshift(task);
@@ -663,9 +702,34 @@ async function addLeadFromForm() {
   }
 
   leadDialog.close();
-  document.querySelector(".lead-form").reset();
-  showToast("Lead added");
+  state.editingLeadId = null;
+  document.querySelector("#leadDialog form").reset();
+  showToast(existingIndex >= 0 ? "Lead updated; duplicate email avoided" : "Lead added");
   render();
+}
+
+async function deleteLead(leadId) {
+  const lead = state.leads.find((item) => item.id === leadId);
+  if (!lead) return;
+  if (!window.confirm(`Delete ${lead.name}? This also removes related follow-up tasks.`)) return;
+
+  if (supabaseClient && state.user && state.company.id !== DEMO_COMPANY_ID) {
+    const { error } = await supabaseClient.from("leads").delete().eq("id", lead.id);
+    if (error) return showToast(error.message);
+  }
+
+  state.leads = state.leads.filter((item) => item.id !== lead.id);
+  state.tasks = state.tasks.filter((task) => task.leadId !== lead.id && task.leadEmail !== lead.email);
+  writeLocalStore();
+  showToast("Lead deleted");
+  render();
+}
+
+function cancelLeadDialog() {
+  state.editingLeadId = null;
+  document.querySelector("#leadDialogTitle").textContent = "Add lead";
+  document.querySelector("#saveLead").textContent = "Save lead";
+  document.querySelector("#leadDialog form").reset();
 }
 
 async function generateLeads() {
@@ -721,6 +785,12 @@ async function syncNow() {
 }
 
 async function refreshBilling() {
+  if (!isCloudWorkspace()) {
+    showToast("Demo mode only. Sign in to connect billing.");
+    render();
+    return;
+  }
+
   await linkBillingSubscription();
   await loadWorkspace();
   render();
@@ -736,6 +806,7 @@ function render() {
   renderLandingSession();
   renderBillingGate();
   renderMetrics();
+  renderPipelineHealth();
   renderBestLeads();
   renderTasks();
   renderFinder();
@@ -791,6 +862,27 @@ function renderMetrics() {
   document.querySelector("#metricValue").textContent = money(value);
 }
 
+function renderPipelineHealth() {
+  const stages = ["New", "Contacted", "Qualified", "Proposal", "Booked"];
+  const stale = state.leads.filter((lead) => !["Qualified", "Proposal", "Booked"].includes(lead.status) && daysUntil(lead.travelDate) <= 30);
+  document.querySelector("#pipelineHealth").innerHTML = `
+    ${stages.map((stage) => {
+      const leads = state.leads.filter((lead) => lead.status === stage);
+      const value = leads.reduce((sum, lead) => sum + lead.budget, 0);
+      return `
+        <div>
+          <strong>${escapeHtml(stage)}</strong>
+          <span>${leads.length} leads · ${money(value)}</span>
+        </div>
+      `;
+    }).join("")}
+    <div>
+      <strong>Needs attention</strong>
+      <span>${stale.length} stale or urgent leads</span>
+    </div>
+  `;
+}
+
 function renderBestLeads() {
   const top = [...state.leads].sort((a, b) => b.score - a.score).slice(0, 5);
   document.querySelector("#bestLeads").innerHTML = top.length
@@ -806,7 +898,10 @@ function renderTasks() {
         return `
           <label class="task-row">
             <input type="checkbox" data-task="${task.id}" ${task.done ? "checked" : ""} />
-            <span>${escapeHtml(task.text)}${lead ? ` · ${escapeHtml(lead.name)}` : ""}</span>
+            <span>
+              <strong>${escapeHtml(task.text)}</strong>${lead ? ` · ${escapeHtml(lead.name)}` : ""}
+              <small>${escapeHtml(task.priority)} priority · Due ${shortDate(task.dueAt)} · Owner: ${escapeHtml(task.owner)}</small>
+            </span>
           </label>
         `;
       }).join("")
@@ -827,7 +922,7 @@ function renderFinder() {
       && lead.budget >= minBudget
       && windowMatch
       && (group === "any" || lead.group === group);
-  });
+  }).sort((a, b) => b.score - a.score);
 
   document.querySelector("#finderResults").innerHTML = matches.length
     ? matches.map((lead) => leadCard(lead)).join("")
@@ -837,7 +932,7 @@ function renderFinder() {
 function renderPipeline() {
   const search = document.querySelector("#leadSearch").value.toLowerCase();
   const rows = state.leads
-    .filter((lead) => [lead.name, lead.email, lead.destination, lead.status].join(" ").toLowerCase().includes(search))
+    .filter((lead) => leadSearchText(lead).includes(search))
     .sort((a, b) => b.score - a.score)
     .map((lead) => `
       <tr>
@@ -845,16 +940,40 @@ function renderPipeline() {
         <td>${escapeHtml(lead.destination)}<br><span>${escapeHtml(lead.group)}</span></td>
         <td>${money(lead.budget)}</td>
         <td>${shortDate(lead.travelDate)}</td>
-        <td><strong class="score">${lead.score}</strong></td>
+        <td>
+          <strong class="score">${lead.score}</strong>
+          <span>${escapeHtml(scoreSummary(lead))}</span>
+        </td>
         <td>
           <select data-status="${lead.id}">
             ${["New", "Contacted", "Qualified", "Proposal", "Booked"].map((status) => `<option ${lead.status === status ? "selected" : ""}>${status}</option>`).join("")}
           </select>
         </td>
+        <td>
+          <div class="row-actions">
+            <button class="button secondary small-button" data-edit-lead="${lead.id}" type="button">Edit</button>
+            <button class="button danger small-button" data-delete-lead="${lead.id}" type="button">Delete</button>
+          </div>
+        </td>
       </tr>
     `);
 
   document.querySelector("#pipelineRows").innerHTML = rows.join("");
+}
+
+function leadSearchText(lead) {
+  return [
+    lead.name,
+    lead.email,
+    lead.phone,
+    lead.destination,
+    lead.group,
+    lead.status,
+    lead.source,
+    lead.notes,
+    money(lead.budget),
+    shortDate(lead.travelDate)
+  ].join(" ").toLowerCase();
 }
 
 function renderScriptOptions() {
@@ -881,6 +1000,7 @@ function renderSettings() {
 }
 
 function leadCard(lead) {
+  const reasons = scoreLeadDetails(lead).reasons;
   return `
     <article class="lead-card">
       <header>
@@ -888,7 +1008,11 @@ function leadCard(lead) {
           <h4>${escapeHtml(lead.name)}</h4>
           <span>${escapeHtml(lead.source)} · ${escapeHtml(lead.email)}</span>
         </div>
-        <strong class="score">${lead.score}</strong>
+        <div class="lead-card-actions">
+          <strong class="score">${lead.score}</strong>
+          <button class="icon-button" data-edit-lead="${lead.id}" type="button" title="Edit ${escapeHtml(lead.name)}">✎</button>
+          <button class="icon-button danger-icon" data-delete-lead="${lead.id}" type="button" title="Delete ${escapeHtml(lead.name)}">×</button>
+        </div>
       </header>
       <div class="lead-meta">
         <span class="pill">${escapeHtml(lead.destination)}</span>
@@ -896,6 +1020,12 @@ function leadCard(lead) {
         <span>${money(lead.budget)}</span>
         <span>${shortDate(lead.travelDate)}</span>
       </div>
+      <details class="score-details">
+        <summary>Why this score</summary>
+        <ul>
+          ${reasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join("")}
+        </ul>
+      </details>
       <span>${escapeHtml(lead.notes || "No notes yet.")}</span>
     </article>
   `;
@@ -904,10 +1034,55 @@ function leadCard(lead) {
 function updateScript() {
   const lead = state.leads.find((item) => item.id === document.querySelector("#scriptLead").value) || state.leads[0];
   const offer = document.querySelector("#scriptOffer").value;
-  const text = lead
-    ? `Hi ${lead.name.split(" ")[0]},\n\nI saw you were interested in a ${lead.destination.toLowerCase()} vacation for ${shortDate(lead.travelDate).toLowerCase()}. I found a ${offer} that fits your ${lead.group.toLowerCase()} trip and keeps the package near your ${money(lead.budget)} budget.\n\nWould you like me to send two options today: one best-value package and one upgraded resort package?\n\nBest,\n${state.company.name}`
-    : "";
+  const text = lead ? buildOutreachScript(lead, offer) : "";
   document.querySelector("#scriptText").value = text;
+}
+
+function buildOutreachScript(lead, offer) {
+  const firstName = lead.name.split(" ")[0];
+  const date = shortDate(lead.travelDate).toLowerCase();
+  const destination = lead.destination.toLowerCase();
+  const group = lead.group.toLowerCase();
+  const hooks = outreachHooks(lead);
+  const packageLine = recommendedOfferLine(lead, offer);
+  const valueLine = /price-sensitive|comparing|separately|payment|budget/i.test(lead.notes || "")
+    ? "I can also break down the bundle value against booking each piece separately, including payment timing."
+    : `I can keep the options close to your ${money(lead.budget)} target while showing one value pick and one upgraded pick.`;
+
+  return `Hi ${firstName},
+
+I saw you were interested in ${articleFor(destination)} ${destination} trip for ${date}. ${packageLine}
+
+${hooks}
+
+${valueLine}
+
+Would you like me to send two tailored options today so you can compare the best fit?
+
+Best,
+${state.company.name}`;
+}
+
+function outreachHooks(lead) {
+  const notes = lead.notes || "";
+  const hooks = [];
+  if (/kids|children|adjoining|family|payment/i.test(notes)) hooks.push("I will focus on kid-friendly activities, room setup, and flexible payment options.");
+  if (/anniversary|oceanfront|dining|flight/i.test(notes)) hooks.push("I will include oceanfront dining options and convenient flight timing.");
+  if (/meeting|leadership|retreat|spa|corporate/i.test(notes)) hooks.push("I will include meeting space, spa availability, and private group options.");
+  if (/nightlife|friends|six|group/i.test(notes)) hooks.push("I will highlight nightlife, group-friendly rooms, and package options that work for six travelers.");
+  if (/bundle|separately|comparing|price/i.test(notes)) hooks.push("I will make the package comparison clear so the value is easy to see.");
+  return hooks.length ? hooks.join(" ") : `I will tailor the options around your ${lead.group.toLowerCase()} travel needs and the details you shared.`;
+}
+
+function recommendedOfferLine(lead, selectedOffer) {
+  if (lead.destination === "Cruise") return "I will focus on cruise or resort packages with nightlife and group-friendly value instead of forcing a beach-only offer.";
+  if (/anniversary/i.test(lead.notes || "")) return "I found anniversary-friendly options that fit the trip style you described.";
+  if (/meeting|leadership|retreat|corporate/i.test(lead.notes || "")) return "I found retreat-ready options with the practical details your company group will need.";
+  return `I found ${articleFor(selectedOffer)} ${selectedOffer} that fits your ${lead.group.toLowerCase()} trip.`;
+}
+
+function articleFor(phrase) {
+  return /^[aeiou]/i.test(String(phrase).trim()) ? "an" : "a";
 }
 
 function prepareLead(lead) {
@@ -935,6 +1110,9 @@ function prepareTask(task) {
     leadId: task.leadId || null,
     leadEmail: task.leadEmail || "",
     text: task.text || "Follow up",
+    dueAt: task.dueAt || tomorrowIsoDate(),
+    priority: task.priority || "Normal",
+    owner: task.owner || state.company.role || "Sales Rep",
     done: Boolean(task.done)
   };
 }
@@ -943,29 +1121,75 @@ function sampleTasks() {
   return sampleLeads.slice(0, 4).map((lead, index) => prepareTask({
     leadEmail: lead.email,
     text: index % 2 === 0 ? "Send tailored package options" : "Call to confirm travel dates",
+    priority: index % 2 === 0 ? "Normal" : "High",
     done: false
   }));
 }
 
 function scoreLead(lead) {
+  return scoreLeadDetails(lead).score;
+}
+
+function scoreLeadDetails(lead) {
   const budget = Number(lead.budget) || 0;
   const days = daysUntil(lead.travelDate);
   let score = 35;
+  const reasons = ["Base score +35 for a complete vacation inquiry"];
 
-  if (budget >= 10000) score += 28;
-  else if (budget >= 6500) score += 22;
-  else if (budget >= 4000) score += 15;
-  else if (budget >= 2500) score += 8;
+  if (budget >= 10000) {
+    score += 28;
+    reasons.push("+28 high budget, strong booking value");
+  } else if (budget >= 6500) {
+    score += 22;
+    reasons.push("+22 healthy resort package budget");
+  } else if (budget >= 4000) {
+    score += 15;
+    reasons.push("+15 workable vacation budget");
+  } else if (budget >= 2500) {
+    score += 8;
+    reasons.push("+8 budget is possible but price-sensitive");
+  } else {
+    reasons.push("+0 budget may need qualification");
+  }
 
-  if (days >= 0 && days <= 45) score += 24;
-  else if (days <= 90) score += 18;
-  else if (days <= 180) score += 10;
+  if (days >= 0 && days <= 45) {
+    score += 24;
+    reasons.push("+24 travel window is urgent");
+  } else if (days <= 90) {
+    score += 18;
+    reasons.push("+18 travel is within 90 days");
+  } else if (days <= 180) {
+    score += 10;
+    reasons.push("+10 travel is within six months");
+  } else {
+    reasons.push("+0 travel window is flexible or far out");
+  }
 
-  if (["Qualified", "Proposal"].includes(lead.status)) score += 14;
-  if (lead.group === "Family" || lead.group === "Corporate") score += 8;
-  if (lead.notes && lead.notes.length > 35) score += 5;
+  if (["Qualified", "Proposal"].includes(lead.status)) {
+    score += 14;
+    reasons.push(`+14 status is ${lead.status}`);
+  }
+  if (lead.group === "Family" || lead.group === "Corporate") {
+    score += 8;
+    reasons.push(`+8 ${lead.group.toLowerCase()} trip usually needs planning help`);
+  }
+  if (lead.notes && lead.notes.length > 35) {
+    score += 5;
+    reasons.push("+5 detailed notes give the rep personalization hooks");
+  }
 
-  return Math.max(1, Math.min(score, 100));
+  if (/price-sensitive|comparing|separately|payment|budget/i.test(lead.notes || "")) {
+    reasons.push("Watch: price sensitivity may require a value-first package");
+  }
+
+  return {
+    score: Math.max(1, Math.min(score, 100)),
+    reasons
+  };
+}
+
+function scoreSummary(lead) {
+  return scoreLeadDetails(lead).reasons.slice(1, 3).join(" · ");
 }
 
 function daysUntil(dateValue) {
@@ -987,6 +1211,12 @@ function money(value) {
 function shortDate(dateValue) {
   if (!dateValue) return "Flexible";
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(`${dateValue}T00:00:00`));
+}
+
+function tomorrowIsoDate() {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  return date.toISOString().slice(0, 10);
 }
 
 async function persistLead(lead) {
@@ -1057,6 +1287,7 @@ function toRemoteTask(task) {
     company_id: state.company.id,
     lead_id: task.leadId,
     title: task.text,
+    due_at: task.dueAt || null,
     done: task.done
   };
 }
@@ -1067,6 +1298,7 @@ function fromRemoteTask(task) {
     companyId: task.company_id,
     leadId: task.lead_id,
     text: task.title,
+    dueAt: task.due_at,
     done: task.done
   };
 }
@@ -1110,9 +1342,24 @@ function importCsv(file) {
       });
       return prepareLead(lead);
     });
-    state.leads = [...imported, ...state.leads];
-    await Promise.all(imported.map(persistLead));
-    showToast(`${imported.length} leads imported`);
+    const importedEmails = new Set();
+    let added = 0;
+    let updated = 0;
+    for (const lead of imported) {
+      if (lead.email && importedEmails.has(lead.email.toLowerCase())) continue;
+      if (lead.email) importedEmails.add(lead.email.toLowerCase());
+      const existingIndex = state.leads.findIndex((item) => lead.email && item.email.toLowerCase() === lead.email.toLowerCase());
+      if (existingIndex >= 0) {
+        lead.id = state.leads[existingIndex].id;
+        state.leads[existingIndex] = { ...state.leads[existingIndex], ...lead };
+        updated += 1;
+      } else {
+        state.leads.unshift(lead);
+        added += 1;
+      }
+      await persistLead(lead);
+    }
+    showToast(`${added} leads imported${updated ? `, ${updated} updated` : ""}`);
     render();
   };
   reader.readAsText(file);

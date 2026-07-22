@@ -269,6 +269,13 @@
             <div id="taskList" class="task-list"></div>
           </section>
         </div>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <h3>Pipeline health</h3>
+          </div>
+          <div id="pipelineHealth" class="pipeline-health"></div>
+        </section>
       </section>
 
       <section class="view" id="finder">
@@ -338,6 +345,7 @@
                   <th>Travel</th>
                   <th>Score</th>
                   <th>Status</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="pipelineRows"></tbody>
@@ -429,7 +437,7 @@
     <dialog id="leadDialog">
       <form method="dialog" class="lead-form">
         <div class="panel-heading">
-          <h3>Add lead</h3>
+          <h3 id="leadDialogTitle">Add lead</h3>
           <button class="icon-button" value="cancel" type="submit" title="Close">×</button>
         </div>
         <div class="form-grid">

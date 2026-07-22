@@ -454,6 +454,12 @@ textarea {
   font-weight: 700;
 }
 
+.small-button {
+  min-height: 32px;
+  padding: 7px 9px;
+  font-size: 12px;
+}
+
 .primary {
   background: var(--accent);
   color: #fff;
@@ -468,6 +474,13 @@ textarea {
   background: #fff;
   border-color: var(--line);
   color: var(--ink);
+}
+
+.button.danger,
+.danger-icon {
+  border-color: rgba(174, 48, 48, 0.24);
+  color: #9f2d2d;
+  background: #fff7f5;
 }
 
 .file-button input {
@@ -658,9 +671,26 @@ label {
   background: #fff;
 }
 
+.task-row span {
+  display: grid;
+  gap: 3px;
+}
+
+.task-row small {
+  color: var(--muted);
+}
+
 .lead-card {
   display: grid;
   gap: 10px;
+}
+
+.lead-card-actions,
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .lead-card header,
@@ -696,6 +726,28 @@ label {
   font-weight: 800;
 }
 
+.score-details {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--soft);
+}
+
+.score-details summary {
+  cursor: pointer;
+  color: var(--accent-strong);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.score-details ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .filters,
 .outreach-grid,
 .form-grid {
@@ -723,17 +775,23 @@ label {
   display: none;
 }
 
-.account-list {
+.account-list,
+.pipeline-health {
   display: grid;
   gap: 12px;
 }
 
-.account-list div {
+.account-list div,
+.pipeline-health div {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 12px;
   display: grid;
   gap: 4px;
+}
+
+.pipeline-health {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .account-list a {
@@ -870,6 +928,7 @@ menu {
 
   .split-layout,
   .results-grid,
+  .pipeline-health,
   .billing-gate,
   .proof-band,
   .pricing-grid,

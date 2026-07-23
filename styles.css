@@ -476,8 +476,7 @@ textarea {
   color: var(--ink);
 }
 
-.button.danger,
-.danger-icon {
+.button.danger {
   border-color: rgba(174, 48, 48, 0.24);
   color: #9f2d2d;
   background: #fff7f5;

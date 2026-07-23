@@ -900,7 +900,7 @@ function renderTasks() {
             <input type="checkbox" data-task="${task.id}" ${task.done ? "checked" : ""} />
             <span>
               <strong>${escapeHtml(task.text)}</strong>${lead ? ` · ${escapeHtml(lead.name)}` : ""}
-              <small>${escapeHtml(task.priority)} priority · Due ${shortDate(task.dueAt)} · Owner: ${escapeHtml(task.owner)}</small>
+              <small>${escapeHtml(task.priority)} priority · Due ${shortDate(task.dueAt)} · Assigned to ${escapeHtml(taskOwnerLabel(task))}</small>
             </span>
           </label>
         `;
@@ -1010,8 +1010,8 @@ function leadCard(lead) {
         </div>
         <div class="lead-card-actions">
           <strong class="score">${lead.score}</strong>
-          <button class="icon-button" data-edit-lead="${lead.id}" type="button" title="Edit ${escapeHtml(lead.name)}">✎</button>
-          <button class="icon-button danger-icon" data-delete-lead="${lead.id}" type="button" title="Delete ${escapeHtml(lead.name)}">×</button>
+          <button class="button secondary small-button" data-edit-lead="${lead.id}" type="button">Edit</button>
+          <button class="button danger small-button" data-delete-lead="${lead.id}" type="button">Delete</button>
         </div>
       </header>
       <div class="lead-meta">
@@ -1179,7 +1179,7 @@ function scoreLeadDetails(lead) {
   }
 
   if (/price-sensitive|comparing|separately|payment|budget/i.test(lead.notes || "")) {
-    reasons.push("Watch: price sensitivity may require a value-first package");
+    reasons.push("Value note: compare bundle savings, payment timing, and best-fit package options");
   }
 
   return {
@@ -1217,6 +1217,11 @@ function tomorrowIsoDate() {
   const date = new Date();
   date.setDate(date.getDate() + 1);
   return date.toISOString().slice(0, 10);
+}
+
+function taskOwnerLabel(task) {
+  if (!task.owner || task.owner === "Owner") return "Sales Rep";
+  return task.owner;
 }
 
 async function persistLead(lead) {

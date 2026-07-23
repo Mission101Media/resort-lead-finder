@@ -49,6 +49,14 @@ create table if not exists public.tasks (
   updated_at timestamptz not null default now()
 );
 
+alter table public.leads
+  add column if not exists activity jsonb not null default '[]'::jsonb;
+
+alter table public.tasks
+  add column if not exists task_type text not null default 'Call',
+  add column if not exists priority text not null default 'Normal',
+  add column if not exists owner_name text not null default 'Sales Rep';
+
 create table if not exists public.billing_subscriptions (
   id uuid primary key default gen_random_uuid(),
   company_id uuid references public.companies(id) on delete set null,
@@ -86,78 +94,92 @@ as $$
   );
 $$;
 
+drop policy if exists "companies are visible to owners and members" on public.companies;
 create policy "companies are visible to owners and members"
 on public.companies
 for select
 using (owner_id = auth.uid() or public.is_company_member(id));
 
+drop policy if exists "authenticated users can create their company" on public.companies;
 create policy "authenticated users can create their company"
 on public.companies
 for insert
 to authenticated
 with check (owner_id = auth.uid());
 
+drop policy if exists "owners can update their company" on public.companies;
 create policy "owners can update their company"
 on public.companies
 for update
 using (owner_id = auth.uid())
 with check (owner_id = auth.uid());
 
+drop policy if exists "members can view company membership" on public.company_members;
 create policy "members can view company membership"
 on public.company_members
 for select
 using (user_id = auth.uid() or public.is_company_member(company_id));
 
+drop policy if exists "owners can add themselves as first member" on public.company_members;
 create policy "owners can add themselves as first member"
 on public.company_members
 for insert
 to authenticated
 with check (user_id = auth.uid());
 
+drop policy if exists "company members can read leads" on public.leads;
 create policy "company members can read leads"
 on public.leads
 for select
 using (public.is_company_member(company_id));
 
+drop policy if exists "company members can create leads" on public.leads;
 create policy "company members can create leads"
 on public.leads
 for insert
 to authenticated
 with check (public.is_company_member(company_id));
 
+drop policy if exists "company members can update leads" on public.leads;
 create policy "company members can update leads"
 on public.leads
 for update
 using (public.is_company_member(company_id))
 with check (public.is_company_member(company_id));
 
+drop policy if exists "company members can delete leads" on public.leads;
 create policy "company members can delete leads"
 on public.leads
 for delete
 using (public.is_company_member(company_id));
 
+drop policy if exists "company members can read tasks" on public.tasks;
 create policy "company members can read tasks"
 on public.tasks
 for select
 using (public.is_company_member(company_id));
 
+drop policy if exists "company members can create tasks" on public.tasks;
 create policy "company members can create tasks"
 on public.tasks
 for insert
 to authenticated
 with check (public.is_company_member(company_id));
 
+drop policy if exists "company members can update tasks" on public.tasks;
 create policy "company members can update tasks"
 on public.tasks
 for update
 using (public.is_company_member(company_id))
 with check (public.is_company_member(company_id));
 
+drop policy if exists "company members can delete tasks" on public.tasks;
 create policy "company members can delete tasks"
 on public.tasks
 for delete
 using (public.is_company_member(company_id));
 
+drop policy if exists "company members can read billing subscriptions" on public.billing_subscriptions;
 create policy "company members can read billing subscriptions"
 on public.billing_subscriptions
 for select

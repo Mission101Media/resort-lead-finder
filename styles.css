@@ -661,13 +661,17 @@ label {
 
 .lead-list,
 .task-list,
-.results-grid {
+.results-grid,
+.activity-list,
+.manager-list {
   display: grid;
   gap: 12px;
 }
 
 .lead-card,
-.task-row {
+.task-row,
+.activity-list div,
+.manager-list div {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 14px;
@@ -681,6 +685,51 @@ label {
 
 .task-row small {
   color: var(--muted);
+}
+
+.quick-task-form,
+.activity-composer,
+.capture-form,
+.capture-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.quick-task-form,
+.activity-composer {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+}
+
+.capture-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.9fr);
+}
+
+.capture-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.activity-panel {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.activity-list div,
+.manager-list div {
+  display: grid;
+  gap: 4px;
+}
+
+.activity-list span,
+.activity-list small,
+.manager-list span {
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .lead-card {
@@ -722,6 +771,15 @@ label {
   color: #1f5967;
   font-size: 12px;
   font-weight: 700;
+}
+
+.warning-pill {
+  border-radius: 999px;
+  padding: 4px 9px;
+  background: #fff3d8;
+  color: #8a5a00;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .score {
@@ -945,6 +1003,10 @@ menu {
   .feature-grid,
   .filters,
   .outreach-grid,
+  .quick-task-form,
+  .activity-composer,
+  .capture-form,
+  .capture-grid,
   .form-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1004,6 +1066,10 @@ menu {
   .proof-metrics,
   .filters,
   .outreach-grid,
+  .quick-task-form,
+  .activity-composer,
+  .capture-form,
+  .capture-grid,
   .form-grid {
     grid-template-columns: 1fr;
   }

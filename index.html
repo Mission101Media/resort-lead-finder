@@ -174,6 +174,10 @@
           <span aria-hidden="true">✉</span>
           Outreach
         </button>
+        <button class="nav-item" data-view="manager" type="button">
+          <span aria-hidden="true">▣</span>
+          Manager
+        </button>
         <button class="nav-item" data-view="settings" type="button">
           <span aria-hidden="true">⚙</span>
           Settings
@@ -272,6 +276,28 @@
               <h3>Follow-ups</h3>
               <button class="icon-button" id="clearDone" type="button" title="Clear completed">✓</button>
             </div>
+            <div class="quick-task-form">
+              <label>Lead<select id="taskLead"></select></label>
+              <label>Type
+                <select id="taskType">
+                  <option>Call</option>
+                  <option>Email</option>
+                  <option>SMS</option>
+                  <option>Proposal</option>
+                  <option>Internal note</option>
+                </select>
+              </label>
+              <label>Due date<input id="taskDue" type="date" /></label>
+              <label>Priority
+                <select id="taskPriority">
+                  <option>High</option>
+                  <option>Normal</option>
+                  <option>Low</option>
+                </select>
+              </label>
+              <label class="wide">Task details<input id="taskText" placeholder="Call to confirm deposit and room setup" /></label>
+              <button id="addTask" class="button primary wide-button" type="button">Add follow-up</button>
+            </div>
             <div id="taskList" class="task-list"></div>
           </section>
         </div>
@@ -301,6 +327,44 @@
       </section>
 
       <section class="view" id="finder">
+        <section class="panel">
+          <div class="panel-heading">
+            <h3>Website lead capture</h3>
+            <button id="copyEmbed" class="button secondary" type="button">Copy embed</button>
+          </div>
+          <div class="capture-grid">
+            <form id="captureForm" class="capture-form">
+              <label>Name<input id="captureName" required placeholder="Traveler name" /></label>
+              <label>Email<input id="captureEmail" type="email" required placeholder="traveler@example.com" /></label>
+              <label>Phone<input id="capturePhone" placeholder="Phone number" /></label>
+              <label>Destination
+                <select id="captureDestination">
+                  <option>All-inclusive</option>
+                  <option>Beach</option>
+                  <option>Cruise</option>
+                  <option>Theme parks</option>
+                  <option>Mountain</option>
+                </select>
+              </label>
+              <label>Group type
+                <select id="captureGroup">
+                  <option>Family</option>
+                  <option>Couple</option>
+                  <option>Friends</option>
+                  <option>Corporate</option>
+                </select>
+              </label>
+              <label>Budget<input id="captureBudget" type="number" min="0" step="100" value="5000" /></label>
+              <label>Travel date<input id="captureDate" type="date" /></label>
+              <label class="wide">Trip details<textarea id="captureNotes" rows="4" placeholder="Kids club, oceanfront dining, meeting space, flexible payments..."></textarea></label>
+              <button id="submitCaptureLead" class="button primary wide-button" type="button">Capture lead</button>
+            </form>
+            <div>
+              <textarea id="embedCode" rows="14" readonly></textarea>
+            </div>
+          </div>
+        </section>
+
         <section class="panel">
           <div class="panel-heading">
             <h3>Find matching prospects</h3>
@@ -346,6 +410,47 @@
           </div>
 
           <div id="finderResults" class="results-grid"></div>
+        </section>
+      </section>
+
+      <section class="view" id="manager">
+        <div class="metrics-grid">
+          <article class="metric">
+            <span>Overdue tasks</span>
+            <strong id="managerOverdue">0</strong>
+          </article>
+          <article class="metric">
+            <span>Stale leads</span>
+            <strong id="managerStale">0</strong>
+          </article>
+          <article class="metric">
+            <span>Close rate</span>
+            <strong id="managerCloseRate">0%</strong>
+          </article>
+          <article class="metric">
+            <span>Booked revenue</span>
+            <strong id="managerBookedValue">$0</strong>
+          </article>
+        </div>
+        <div class="split-layout">
+          <section class="panel">
+            <div class="panel-heading">
+              <h3>Rep activity</h3>
+            </div>
+            <div id="repActivity" class="manager-list"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-heading">
+              <h3>Revenue by stage</h3>
+            </div>
+            <div id="managerStageValue" class="manager-list"></div>
+          </section>
+        </div>
+        <section class="panel">
+          <div class="panel-heading">
+            <h3>Duplicate warnings</h3>
+          </div>
+          <div id="duplicateWarnings" class="manager-list"></div>
         </section>
       </section>
 
@@ -396,6 +501,12 @@
                 <option>holiday travel bundle</option>
               </select>
             </label>
+            <label>Resort<input id="proposalResort" placeholder="Ocean Palms Resort" /></label>
+            <label>Room type<input id="proposalRoom" placeholder="Oceanfront suite" /></label>
+            <label>Nights<input id="proposalNights" type="number" min="1" value="5" /></label>
+            <label>Flights<input id="proposalFlights" placeholder="Direct flights preferred" /></label>
+            <label>Deposit<input id="proposalDeposit" type="number" min="0" step="50" value="500" /></label>
+            <label>Total price<input id="proposalTotal" type="number" min="0" step="100" /></label>
             <label class="wide">
               Script
               <textarea id="scriptText" rows="9"></textarea>
@@ -472,6 +583,28 @@
               <button id="refreshBilling" class="button secondary" type="button">Refresh billing</button>
             </div>
           </section>
+
+          <section class="panel">
+            <div class="panel-heading">
+              <h3>Integrations</h3>
+              <button id="copyIntegrationPayload" class="button secondary" type="button">Copy setup payload</button>
+            </div>
+            <div class="account-list">
+              <div>
+                <strong>Email</strong>
+                <span>Use copied scripts with Gmail, Outlook, Mailchimp, or a future SendGrid connection.</span>
+              </div>
+              <div>
+                <strong>SMS</strong>
+                <span>Use follow-up copy with a future Twilio connection after customer consent is confirmed.</span>
+              </div>
+              <div>
+                <strong>CRM</strong>
+                <span>Export CSV for HubSpot, Salesforce, Zoho, or vacation agency CRM imports.</span>
+              </div>
+            </div>
+            <textarea id="integrationPayload" rows="8" readonly></textarea>
+          </section>
         </div>
       </section>
     </main>
@@ -530,6 +663,26 @@
           </label>
           <label class="wide">Notes<textarea id="leadNotes" rows="4"></textarea></label>
         </div>
+        <section id="leadActivityWrap" class="activity-panel hidden">
+          <div class="panel-heading">
+            <h3>Activity history</h3>
+          </div>
+          <div class="activity-composer">
+            <label>Type
+              <select id="activityType">
+                <option>Note</option>
+                <option>Call</option>
+                <option>Email</option>
+                <option>SMS</option>
+                <option>Status change</option>
+                <option>Proposal</option>
+              </select>
+            </label>
+            <label class="wide">Activity note<input id="activityNote" placeholder="Left voicemail about deposit timing" /></label>
+            <button id="addActivity" class="button secondary wide-button" type="button">Add activity</button>
+          </div>
+          <div id="leadActivityList" class="activity-list"></div>
+        </section>
         <menu>
           <button class="button secondary" value="cancel" type="submit">Cancel</button>
           <button id="saveLead" class="button primary" value="default" type="button">Save lead</button>

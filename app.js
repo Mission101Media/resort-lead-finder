@@ -189,6 +189,17 @@ function bindEvents() {
   leadDialog.addEventListener("close", cancelLeadDialog);
   document.querySelector("#openAuth").addEventListener("click", () => authDialog.showModal());
   document.querySelector("#saveLead").addEventListener("click", addLeadFromForm);
+  document.querySelector("#addTask").addEventListener("click", addTaskFromForm);
+  document.querySelector("#addActivity").addEventListener("click", addActivityFromForm);
+  document.querySelector("#submitCaptureLead").addEventListener("click", addLeadFromCaptureForm);
+  document.querySelector("#copyEmbed").addEventListener("click", async () => {
+    await navigator.clipboard.writeText(document.querySelector("#embedCode").value);
+    showToast("Embed code copied");
+  });
+  document.querySelector("#copyIntegrationPayload").addEventListener("click", async () => {
+    await navigator.clipboard.writeText(document.querySelector("#integrationPayload").value);
+    showToast("Integration setup copied");
+  });
   document.querySelector("#generateLeads").addEventListener("click", generateLeads);
   document.querySelector("#exportCsv").addEventListener("click", exportCsv);
   document.querySelector("#refreshBilling").addEventListener("click", refreshBilling);
@@ -218,7 +229,7 @@ function bindEvents() {
     button.addEventListener("click", () => setAuthMode(button.dataset.authMode));
   });
 
-  ["destinationFilter", "budgetFilter", "windowFilter", "groupFilter", "leadSearch", "scriptOffer", "scriptLead", "autoScore"].forEach((id) => {
+  ["destinationFilter", "budgetFilter", "windowFilter", "groupFilter", "leadSearch", "scriptOffer", "scriptLead", "autoScore", "proposalResort", "proposalRoom", "proposalNights", "proposalFlights", "proposalDeposit", "proposalTotal"].forEach((id) => {
     document.querySelector(`#${id}`).addEventListener("input", render);
   });
 
@@ -226,8 +237,12 @@ function bindEvents() {
     if (event.target.matches("[data-status]")) {
       const lead = state.leads.find((item) => item.id === event.target.dataset.status);
       if (lead) {
+        const oldStatus = lead.status;
         lead.status = event.target.value;
         lead.score = scoreLead(lead);
+        if (oldStatus !== lead.status) {
+          addActivity(lead, "Status change", `Moved from ${oldStatus} to ${lead.status}`);
+        }
         await persistLead(lead);
       }
       render();
@@ -670,6 +685,8 @@ function openLeadDialog(leadId = null) {
   document.querySelector("#leadStatus").value = lead?.status || "New";
   document.querySelector("#leadSource").value = lead?.source || "Manual";
   document.querySelector("#leadNotes").value = lead?.notes || "";
+  document.querySelector("#leadActivityWrap").classList.toggle("hidden", !lead);
+  renderLeadActivity(lead);
   leadDialog.showModal();
 }
 
@@ -686,17 +703,22 @@ async function addLeadFromForm() {
     travelDate: document.querySelector("#leadDate").value,
     status: document.querySelector("#leadStatus").value,
     notes: document.querySelector("#leadNotes").value,
-    source: document.querySelector("#leadSource").value || existingLead?.source || "Manual"
+    source: document.querySelector("#leadSource").value || existingLead?.source || "Manual",
+    activity: existingLead?.activity || []
   });
 
+  const duplicate = findDuplicateLead(lead, lead.id);
   const existingIndex = state.leads.findIndex((item) => item.id === lead.id || (lead.email && item.email.toLowerCase() === lead.email.toLowerCase()));
   if (existingIndex >= 0) {
     lead.id = state.leads[existingIndex].id;
     state.leads[existingIndex] = { ...state.leads[existingIndex], ...lead };
+    addActivity(state.leads[existingIndex], "Note", "Lead details updated");
   } else {
     state.leads.unshift(lead);
+    addActivity(lead, "Note", "Lead created manually");
   }
-  await persistLead(lead);
+  const savedLead = existingIndex >= 0 ? state.leads[existingIndex] : lead;
+  await persistLead(savedLead);
 
   if (existingIndex < 0 && document.querySelector("#autoTasks").checked) {
     const task = prepareTask({
@@ -713,8 +735,94 @@ async function addLeadFromForm() {
   leadDialog.close();
   state.editingLeadId = null;
   document.querySelector("#leadDialog form").reset();
-  showToast(existingIndex >= 0 ? "Lead updated; duplicate email avoided" : "Lead added");
+  showToast(duplicate ? `Lead saved. Possible duplicate: ${duplicate.name}` : existingIndex >= 0 ? "Lead updated" : "Lead added");
   render();
+}
+
+async function addLeadFromCaptureForm() {
+  const lead = prepareLead({
+    name: document.querySelector("#captureName").value,
+    email: document.querySelector("#captureEmail").value,
+    phone: document.querySelector("#capturePhone").value,
+    destination: document.querySelector("#captureDestination").value,
+    group: document.querySelector("#captureGroup").value,
+    budget: document.querySelector("#captureBudget").value,
+    travelDate: document.querySelector("#captureDate").value,
+    status: "New",
+    notes: document.querySelector("#captureNotes").value,
+    source: "Website inquiry"
+  });
+
+  if (!lead.name || !lead.email) return showToast("Capture form needs name and email");
+
+  const duplicate = findDuplicateLead(lead);
+  if (duplicate) {
+    duplicate.notes = [duplicate.notes, lead.notes].filter(Boolean).join("\n");
+    duplicate.budget = Math.max(duplicate.budget, lead.budget);
+    duplicate.score = scoreLead(duplicate);
+    addActivity(duplicate, "Note", `Captured possible duplicate inquiry from ${lead.source}`);
+    await persistLead(duplicate);
+    showToast(`Updated possible duplicate: ${duplicate.name}`);
+  } else {
+    addActivity(lead, "Note", "Captured from website inquiry form");
+    state.leads.unshift(lead);
+    await persistLead(lead);
+    if (document.querySelector("#autoTasks").checked) {
+      const task = prepareTask({
+        leadId: lead.id,
+        leadEmail: lead.email,
+        text: "Respond to new website inquiry",
+        type: "Call",
+        priority: lead.score >= 75 ? "High" : "Normal"
+      });
+      state.tasks.unshift(task);
+      await persistTask(task);
+    }
+    showToast("Website lead captured");
+  }
+
+  document.querySelector("#captureForm").reset();
+  render();
+}
+
+async function addTaskFromForm() {
+  const leadId = document.querySelector("#taskLead").value;
+  const lead = state.leads.find((item) => item.id === leadId);
+  if (!lead) return showToast("Choose a lead for the task");
+
+  const type = document.querySelector("#taskType").value;
+  const text = document.querySelector("#taskText").value.trim() || `${type} follow-up`;
+  const task = prepareTask({
+    leadId: lead.id,
+    leadEmail: lead.email,
+    text,
+    type,
+    dueAt: document.querySelector("#taskDue").value || tomorrowIsoDate(),
+    priority: document.querySelector("#taskPriority").value,
+    owner: state.company.role || "Sales Rep"
+  });
+
+  state.tasks.unshift(task);
+  addActivity(lead, type, `Task created: ${text}`);
+  await persistTask(task);
+  await persistLead(lead);
+  document.querySelector("#taskText").value = "";
+  showToast("Follow-up task added");
+  render();
+}
+
+async function addActivityFromForm() {
+  const lead = state.leads.find((item) => item.id === state.editingLeadId);
+  if (!lead) return;
+  const type = document.querySelector("#activityType").value;
+  const note = document.querySelector("#activityNote").value.trim();
+  if (!note) return showToast("Add an activity note");
+  addActivity(lead, type, note);
+  await persistLead(lead);
+  document.querySelector("#activityNote").value = "";
+  renderLeadActivity(lead);
+  render();
+  showToast("Activity added");
 }
 
 async function deleteLead(leadId) {
@@ -819,11 +927,15 @@ function render() {
   renderSourcePerformance();
   renderConversionImpact();
   renderBestLeads();
+  renderTaskOptions();
   renderTasks();
   renderFinder();
   renderPipeline();
   renderScriptOptions();
   renderSettings();
+  renderManager();
+  renderEmbedCode();
+  renderIntegrationPayload();
   updateScript();
 }
 
@@ -963,6 +1075,17 @@ function renderBestLeads() {
     : `<p class="empty">No leads yet.</p>`;
 }
 
+function renderTaskOptions() {
+  const select = document.querySelector("#taskLead");
+  const selected = select.value;
+  select.innerHTML = [...state.leads]
+    .sort((a, b) => b.score - a.score)
+    .map((lead) => `<option value="${lead.id}">${escapeHtml(lead.name)} · ${lead.score}</option>`)
+    .join("");
+  if (selected && state.leads.some((lead) => lead.id === selected)) select.value = selected;
+  document.querySelector("#taskDue").value ||= tomorrowIsoDate();
+}
+
 function renderTasks() {
   const list = document.querySelector("#taskList");
   list.innerHTML = state.tasks.length
@@ -973,7 +1096,7 @@ function renderTasks() {
             <input type="checkbox" data-task="${task.id}" ${task.done ? "checked" : ""} />
             <span>
               <strong>${escapeHtml(task.text)}</strong>${lead ? ` · ${escapeHtml(lead.name)}` : ""}
-              <small>${escapeHtml(task.priority)} priority · Due ${shortDate(task.dueAt)} · Assigned to ${escapeHtml(taskOwnerLabel(task))}</small>
+              <small>${escapeHtml(task.type)} · ${escapeHtml(task.priority)} priority · Due ${shortDate(task.dueAt)} · Assigned to ${escapeHtml(taskOwnerLabel(task))}</small>
             </span>
           </label>
         `;
@@ -1035,6 +1158,73 @@ function renderPipeline() {
   document.querySelector("#pipelineRows").innerHTML = rows.join("");
 }
 
+function renderManager() {
+  const overdueTasks = state.tasks.filter((task) => !task.done && daysUntil(task.dueAt) < 0);
+  const staleLeads = staleLeadsList();
+  const booked = state.leads.filter((lead) => lead.status === "Booked");
+  const closeRate = state.leads.length ? Math.round((booked.length / state.leads.length) * 100) : 0;
+  const bookedValue = booked.reduce((sum, lead) => sum + lead.budget, 0);
+  const stages = ["New", "Contacted", "Qualified", "Proposal", "Booked"];
+
+  document.querySelector("#managerOverdue").textContent = overdueTasks.length;
+  document.querySelector("#managerStale").textContent = staleLeads.length;
+  document.querySelector("#managerCloseRate").textContent = `${closeRate}%`;
+  document.querySelector("#managerBookedValue").textContent = money(bookedValue);
+
+  document.querySelector("#repActivity").innerHTML = activityByOwner().map(([owner, data]) => `
+    <div>
+      <strong>${escapeHtml(owner)}</strong>
+      <span>${data.tasks} tasks · ${data.done} completed · ${data.activities} activities logged</span>
+    </div>
+  `).join("") || `<p class="empty">No rep activity yet.</p>`;
+
+  document.querySelector("#managerStageValue").innerHTML = stages.map((stage) => {
+    const leads = state.leads.filter((lead) => lead.status === stage);
+    const value = leads.reduce((sum, lead) => sum + lead.budget, 0);
+    return `
+      <div>
+        <strong>${escapeHtml(stage)}</strong>
+        <span>${leads.length} leads · ${money(value)}</span>
+      </div>
+    `;
+  }).join("");
+
+  const duplicates = duplicateWarnings();
+  document.querySelector("#duplicateWarnings").innerHTML = duplicates.length
+    ? duplicates.map((warning) => `
+      <div>
+        <strong>${escapeHtml(warning.title)}</strong>
+        <span>${escapeHtml(warning.detail)}</span>
+      </div>
+    `).join("")
+    : `<p class="empty">No likely duplicates found.</p>`;
+}
+
+function renderEmbedCode() {
+  const appUrl = window.location.origin || "https://resortleadfinder.com";
+  document.querySelector("#embedCode").value = `<iframe src="${appUrl}/#lead-capture" title="Vacation inquiry form" width="100%" height="680" style="border:1px solid #d9e3df;border-radius:8px;"></iframe>
+
+<!-- Form fields to collect: name, email, phone, destination, group type, budget, travel date, trip details. Leads appear as Website inquiry in Resort Lead Finder. -->`;
+}
+
+function renderIntegrationPayload() {
+  const hotLead = [...state.leads].sort((a, b) => b.score - a.score)[0];
+  document.querySelector("#integrationPayload").value = JSON.stringify({
+    workspace: state.company.name,
+    supportEmail: "support@resortleadfinder.com",
+    recommendedNextIntegration: "Email provider or CRM import",
+    leadFields: ["name", "email", "phone", "destination", "group", "budget", "travelDate", "status", "score", "source", "notes"],
+    taskFields: ["leadEmail", "type", "priority", "dueAt", "owner", "done"],
+    sampleLead: hotLead ? {
+      name: hotLead.name,
+      email: hotLead.email,
+      phone: hotLead.phone,
+      score: hotLead.score,
+      nextAction: state.tasks.find((task) => task.leadId === hotLead.id || task.leadEmail === hotLead.email)?.text || "Create follow-up"
+    } : null
+  }, null, 2);
+}
+
 function leadSearchText(lead) {
   return [
     lead.name,
@@ -1075,6 +1265,8 @@ function renderSettings() {
 
 function leadCard(lead) {
   const reasons = scoreLeadDetails(lead).reasons;
+  const duplicate = findDuplicateLead(lead, lead.id);
+  const lastActivity = lead.activity?.[0];
   return `
     <article class="lead-card">
       <header>
@@ -1093,6 +1285,7 @@ function leadCard(lead) {
         <span>${escapeHtml(lead.group)}</span>
         <span>${money(lead.budget)}</span>
         <span>${shortDate(lead.travelDate)}</span>
+        ${duplicate ? `<span class="warning-pill">Possible duplicate</span>` : ""}
       </div>
       <details class="score-details">
         <summary>Why this score</summary>
@@ -1100,9 +1293,30 @@ function leadCard(lead) {
           ${reasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join("")}
         </ul>
       </details>
+      ${lastActivity ? `<small>Last activity: ${escapeHtml(lastActivity.type)} · ${escapeHtml(lastActivity.note)} · ${shortDateTime(lastActivity.createdAt)}</small>` : ""}
       <span>${escapeHtml(lead.notes || "No notes yet.")}</span>
     </article>
   `;
+}
+
+function renderLeadActivity(lead) {
+  const wrap = document.querySelector("#leadActivityWrap");
+  const list = document.querySelector("#leadActivityList");
+  if (!lead) {
+    wrap.classList.add("hidden");
+    list.innerHTML = "";
+    return;
+  }
+  wrap.classList.remove("hidden");
+  list.innerHTML = lead.activity?.length
+    ? lead.activity.map((item) => `
+      <div>
+        <strong>${escapeHtml(item.type)} · ${shortDateTime(item.createdAt)}</strong>
+        <span>${escapeHtml(item.note)}</span>
+        <small>${escapeHtml(item.owner || "Sales Rep")}</small>
+      </div>
+    `).join("")
+    : `<p class="empty">No activity logged yet.</p>`;
 }
 
 function updateScript() {
@@ -1142,7 +1356,8 @@ function outreachHooks(lead) {
   const notes = lead.notes || "";
   const hooks = [];
   if (/kids|children|adjoining|family|payment/i.test(notes)) hooks.push("I will focus on kid-friendly activities, room setup, and flexible payment options.");
-  if (/anniversary|oceanfront|dining|flight/i.test(notes)) hooks.push("I will include oceanfront dining options and convenient flight timing.");
+  if (/anniversary|oceanfront|dining/i.test(notes)) hooks.push("I will include anniversary-friendly details, oceanfront dining options, and convenient timing.");
+  else if (/direct flight|flight/i.test(notes)) hooks.push("I will include convenient flight timing with the package options.");
   if (/meeting|leadership|retreat|spa|corporate/i.test(notes)) hooks.push("I will include meeting space, spa availability, and private group options.");
   if (/nightlife|friends|six|group/i.test(notes)) hooks.push("I will highlight nightlife, group-friendly rooms, and package options that work for six travelers.");
   if (/bundle|separately|comparing|price/i.test(notes)) hooks.push("I will make the package comparison clear so the value is easy to see.");
@@ -1160,7 +1375,7 @@ function buildFollowUpSequence(lead, offer) {
   const firstName = lead.name.split(" ")[0];
   const date = shortDate(lead.travelDate).toLowerCase();
   const hooks = outreachHooks(lead);
-  const offerLabel = lead.destination === "Cruise" ? "cruise or resort package" : offer;
+  const offerLabel = followUpOfferLabel(lead, offer);
   const valueLine = /bundle|separately|comparing|price|payment|budget/i.test(lead.notes || "")
     ? "Include a simple side-by-side package value comparison."
     : "Include one best-value option and one upgraded option.";
@@ -1184,6 +1399,7 @@ function buildPackageProposal(lead, offer) {
   const need = outreachHooks(lead);
   const source = lead.source ? `Source: ${lead.source}` : "Source: Unknown";
   const fit = recommendedOfferLine(lead, offer);
+  const proposal = proposalFields(lead);
   const paymentNote = /payment|budget|price|comparing|separately|bundle/i.test(lead.notes || "")
     ? "Show total package value, deposit timing, flexible payment path, and what is included compared with booking pieces separately."
     : "Show total price, what is included, room/travel fit, and one clear reason to choose each option.";
@@ -1192,18 +1408,67 @@ function buildPackageProposal(lead, offer) {
 ${source}
 Trip: ${lead.group} · ${lead.destination} · ${shortDate(lead.travelDate)}
 Budget target: ${money(lead.budget)}
+Resort: ${proposal.resort}
+Room type: ${proposal.room}
+Nights: ${proposal.nights}
+Flights: ${proposal.flights}
+Deposit: ${money(proposal.deposit)}
+Total price: ${money(proposal.total)}
 
 Best-fit angle
 ${fit} ${need}
 
 Option 1 - Best value
-Keep this closest to ${money(lead.budget)}. ${paymentNote}
+Keep this closest to ${money(proposal.total || lead.budget)}. ${paymentNote}
 
 Option 2 - Upgrade
-Add the highest-impact upgrade for this traveler, such as room view, dining, spa, meeting space, flights, nightlife access, or family amenities.
+Add the highest-impact upgrade for this traveler, such as room view, dining, spa, meeting space, flights, nightlife access, or family amenities. Anchor the upgrade against the current ${proposal.room.toLowerCase()} plan.
 
 Recommended next step
-Send the two-option comparison, then ask for the decision blocker: dates, deposit, room setup, flight timing, or total budget.`;
+Send the two-option comparison, then ask for the decision blocker: dates, ${money(proposal.deposit)} deposit, room setup, flight timing, or total budget.`;
+}
+
+function proposalFields(lead) {
+  const totalInput = Number(document.querySelector("#proposalTotal").value);
+  return {
+    resort: document.querySelector("#proposalResort").value.trim() || defaultResortName(lead),
+    room: document.querySelector("#proposalRoom").value.trim() || defaultRoomType(lead),
+    nights: Number(document.querySelector("#proposalNights").value) || 5,
+    flights: document.querySelector("#proposalFlights").value.trim() || defaultFlightNote(lead),
+    deposit: Number(document.querySelector("#proposalDeposit").value) || Math.max(250, Math.round((lead.budget || 2500) * 0.15)),
+    total: totalInput || lead.budget
+  };
+}
+
+function defaultResortName(lead) {
+  if (lead.destination === "Cruise") return "Best-fit cruise package";
+  if (lead.destination === "Mountain") return "Mountain View Resort";
+  if (lead.destination === "Theme parks") return "Family Park Resort";
+  return "Ocean Palms Resort";
+}
+
+function defaultRoomType(lead) {
+  if (/adjoining|kids|children/i.test(lead.notes || "")) return "Adjoining family rooms";
+  if (/anniversary|oceanfront/i.test(lead.notes || "")) return "Oceanfront king suite";
+  if (/meeting|corporate|retreat/i.test(lead.notes || "")) return "Group room block";
+  if (lead.destination === "Cruise") return "Balcony cabin";
+  return "Best-value resort room";
+}
+
+function defaultFlightNote(lead) {
+  if (/direct flight|flight/i.test(lead.notes || "")) return "Convenient flight timing preferred";
+  return "Flights can be quoted with the package";
+}
+
+function followUpOfferLabel(lead, selectedOffer) {
+  const notes = lead.notes || "";
+  if (lead.destination === "Cruise") return "cruise or resort package";
+  if (/anniversary/i.test(notes)) return "anniversary getaway";
+  if (/meeting|leadership|retreat|corporate/i.test(notes)) return "retreat package";
+  if (/bundle|separately|comparing|price|payment/i.test(notes)) return "value comparison package";
+  if (lead.destination === "All-inclusive") return "all-inclusive resort package";
+  if (lead.group === "Family") return "family resort package";
+  return selectedOffer;
 }
 
 function articleFor(phrase) {
@@ -1224,6 +1489,7 @@ function prepareLead(lead) {
     status: lead.status || "New",
     notes: lead.notes || "",
     source: lead.source || "Manual",
+    activity: Array.isArray(lead.activity) ? lead.activity.map(prepareActivity) : [],
     score: Number.isFinite(Number(lead.score)) ? Number(lead.score) : scoreLead(lead)
   };
 }
@@ -1235,6 +1501,7 @@ function prepareTask(task) {
     leadId: task.leadId || null,
     leadEmail: task.leadEmail || "",
     text: task.text || "Follow up",
+    type: task.type || "Call",
     dueAt: task.dueAt || tomorrowIsoDate(),
     priority: task.priority || "Normal",
     owner: task.owner || state.company.role || "Sales Rep",
@@ -1242,10 +1509,26 @@ function prepareTask(task) {
   };
 }
 
+function prepareActivity(activity) {
+  return {
+    id: activity.id || crypto.randomUUID(),
+    type: activity.type || "Note",
+    note: activity.note || "",
+    owner: activity.owner && activity.owner !== "Owner" ? activity.owner : "Sales Rep",
+    createdAt: activity.createdAt || new Date().toISOString()
+  };
+}
+
+function addActivity(lead, type, note) {
+  if (!lead) return;
+  lead.activity = [prepareActivity({ type, note }), ...(lead.activity || [])].slice(0, 50);
+}
+
 function sampleTasks() {
   return sampleLeads.slice(0, 4).map((lead, index) => prepareTask({
     leadEmail: lead.email,
     text: index % 2 === 0 ? "Send tailored package options" : "Call to confirm travel dates",
+    type: index % 2 === 0 ? "Email" : "Call",
     priority: index % 2 === 0 ? "Normal" : "High",
     done: false
   }));
@@ -1349,6 +1632,81 @@ function intentSignals(notes = "") {
   return signals.filter(([pattern]) => pattern.test(notes)).map(([, label]) => label);
 }
 
+function findDuplicateLead(candidate, ignoreId = null) {
+  const candidateEmail = normalizeText(candidate.email);
+  const candidatePhone = normalizePhone(candidate.phone);
+  const candidateName = normalizeText(candidate.name);
+  return state.leads.find((lead) => {
+    if (ignoreId && lead.id === ignoreId) return false;
+    if (candidateEmail && normalizeText(lead.email) === candidateEmail) return true;
+    if (candidatePhone && normalizePhone(lead.phone) === candidatePhone) return true;
+    const sameName = candidateName && normalizeText(lead.name) === candidateName;
+    const sameTrip = lead.destination === candidate.destination && lead.group === candidate.group;
+    const closeBudget = Math.abs((lead.budget || 0) - (candidate.budget || 0)) <= 500;
+    return sameName && sameTrip && closeBudget;
+  });
+}
+
+function duplicateWarnings() {
+  const warnings = [];
+  const seen = new Set();
+  state.leads.forEach((lead) => {
+    const duplicateActivity = (lead.activity || []).find((item) => /possible duplicate/i.test(item.note));
+    if (duplicateActivity) {
+      warnings.push({
+        title: `${lead.name} had a possible duplicate inquiry`,
+        detail: duplicateActivity.note
+      });
+    }
+    if (seen.has(lead.id)) return;
+    const duplicate = findDuplicateLead(lead, lead.id);
+    if (!duplicate || seen.has(duplicate.id)) return;
+    seen.add(lead.id);
+    seen.add(duplicate.id);
+    warnings.push({
+      title: `${lead.name} may duplicate ${duplicate.name}`,
+      detail: [lead.email, duplicate.email, lead.phone, duplicate.phone].filter(Boolean).join(" · ")
+    });
+  });
+  return warnings;
+}
+
+function staleLeadsList() {
+  return state.leads.filter((lead) => {
+    const days = daysUntil(lead.travelDate);
+    const hasOpenTask = state.tasks.some((task) => !task.done && (task.leadId === lead.id || task.leadEmail === lead.email));
+    return !["Proposal", "Booked"].includes(lead.status) && days >= 0 && days <= 30 && !hasOpenTask;
+  });
+}
+
+function activityByOwner() {
+  const owners = new Map();
+  state.tasks.forEach((task) => {
+    const owner = taskOwnerLabel(task);
+    const data = owners.get(owner) || { tasks: 0, done: 0, activities: 0 };
+    data.tasks += 1;
+    data.done += task.done ? 1 : 0;
+    owners.set(owner, data);
+  });
+  state.leads.forEach((lead) => {
+    (lead.activity || []).forEach((item) => {
+      const owner = !item.owner || item.owner === "Owner" ? "Sales Rep" : item.owner;
+      const data = owners.get(owner) || { tasks: 0, done: 0, activities: 0 };
+      data.activities += 1;
+      owners.set(owner, data);
+    });
+  });
+  return [...owners.entries()].sort((a, b) => b[1].activities + b[1].tasks - (a[1].activities + a[1].tasks));
+}
+
+function normalizeText(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function normalizePhone(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
 function scoreSummary(lead) {
   return scoreLeadDetails(lead).reasons.slice(1, 3).join(" · ");
 }
@@ -1372,6 +1730,16 @@ function money(value) {
 function shortDate(dateValue) {
   if (!dateValue) return "Flexible";
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(`${dateValue}T00:00:00`));
+}
+
+function shortDateTime(value) {
+  if (!value) return "Just now";
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(value));
+}
+
+function activitySummary(lead) {
+  const activity = lead.activity?.[0];
+  return activity ? `${activity.type}: ${activity.note}` : "";
 }
 
 function tomorrowIsoDate() {
@@ -1425,6 +1793,7 @@ function toRemoteLead(lead) {
     status: lead.status,
     notes: lead.notes,
     source: lead.source,
+    activity: lead.activity || [],
     score: lead.score
   };
 }
@@ -1443,6 +1812,7 @@ function fromRemoteLead(lead) {
     status: lead.status,
     notes: lead.notes,
     source: lead.source,
+    activity: lead.activity || [],
     score: lead.score
   };
 }
@@ -1453,6 +1823,9 @@ function toRemoteTask(task) {
     company_id: state.company.id,
     lead_id: task.leadId,
     title: task.text,
+    task_type: task.type,
+    priority: task.priority,
+    owner_name: task.owner,
     due_at: task.dueAt || null,
     done: task.done
   };
@@ -1464,6 +1837,9 @@ function fromRemoteTask(task) {
     companyId: task.company_id,
     leadId: task.lead_id,
     text: task.title,
+    type: task.task_type,
+    priority: task.priority,
+    owner: task.owner_name,
     dueAt: task.due_at,
     done: task.done
   };
@@ -1490,8 +1866,8 @@ function writeLocalStore() {
 }
 
 function exportCsv() {
-  const headers = ["name", "email", "phone", "destination", "group", "budget", "travelDate", "status", "score", "source", "notes"];
-  const rows = state.leads.map((lead) => headers.map((key) => csvCell(lead[key])).join(","));
+  const headers = ["name", "email", "phone", "destination", "group", "budget", "travelDate", "status", "score", "source", "lastActivity", "notes"];
+  const rows = state.leads.map((lead) => headers.map((key) => csvCell(key === "lastActivity" ? activitySummary(lead) : lead[key])).join(","));
   download(`resort-leads-${new Date().toISOString().slice(0, 10)}.csv`, [headers.join(","), ...rows].join("\n"));
 }
 
@@ -1515,12 +1891,18 @@ function importCsv(file) {
     for (const lead of imported) {
       if (lead.email && importedEmails.has(lead.email.toLowerCase())) continue;
       if (lead.email) importedEmails.add(lead.email.toLowerCase());
-      const existingIndex = state.leads.findIndex((item) => lead.email && item.email.toLowerCase() === lead.email.toLowerCase());
+      const duplicate = findDuplicateLead(lead);
+      const existingIndex = duplicate
+        ? state.leads.findIndex((item) => item.id === duplicate.id)
+        : state.leads.findIndex((item) => lead.email && item.email.toLowerCase() === lead.email.toLowerCase());
       if (existingIndex >= 0) {
         lead.id = state.leads[existingIndex].id;
+        lead.activity = state.leads[existingIndex].activity || [];
         state.leads[existingIndex] = { ...state.leads[existingIndex], ...lead };
+        addActivity(state.leads[existingIndex], "Note", "Updated from CSV import");
         updated += 1;
       } else {
+        addActivity(lead, "Note", "Created from CSV import");
         state.leads.unshift(lead);
         added += 1;
       }

@@ -1,4 +1,8 @@
 const plans = {
+  solo: {
+    priceEnv: "STRIPE_SOLO_PRICE_ID",
+    name: "Solo Agent"
+  },
   starter: {
     priceEnv: "STRIPE_STARTER_PRICE_ID",
     name: "Starter"

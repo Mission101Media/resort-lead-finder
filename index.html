@@ -77,25 +77,31 @@
       <section class="landing-section">
         <div class="section-heading">
           <p class="eyebrow">Simple launch plans</p>
-          <h3>Start with one sales team, then expand.</h3>
+          <h3>Start solo, then expand into a team.</h3>
         </div>
         <div id="plans" class="pricing-grid">
           <article class="price-card">
+            <span>Solo Agent</span>
+            <strong>$35/mo</strong>
+            <p>For independent travel advisors managing their own vacation leads.</p>
+            <button class="button primary checkout-button" data-plan="solo" type="button">Start 14-day trial</button>
+          </article>
+          <article class="price-card">
             <span>Starter</span>
-            <strong>$199/mo</strong>
-            <p>For one resort or small agency proving the workflow.</p>
+            <strong>$149/mo</strong>
+            <p>For a small agency or resort desk with steady inquiries.</p>
             <button class="button primary checkout-button" data-plan="starter" type="button">Start 14-day trial</button>
           </article>
           <article class="price-card featured">
             <span>Team</span>
-            <strong>$499/mo</strong>
-            <p>For sales managers who need rep follow-ups, imports, and pipeline tracking.</p>
+            <strong>$399/mo</strong>
+            <p>For multi-rep teams that need shared pipeline and manager visibility.</p>
             <button class="button primary checkout-button" data-plan="team" type="button">Start 14-day trial</button>
           </article>
           <article class="price-card">
-            <span>Pro</span>
+            <span>Premium</span>
             <strong>Custom</strong>
-            <p>For multi-location resorts, vacation clubs, and CRM integrations.</p>
+            <p>For setup help, integrations, multi-location resorts, and vacation clubs.</p>
             <button class="button secondary checkout-button" data-plan="pro" type="button">Contact sales</button>
           </article>
         </div>
@@ -400,9 +406,10 @@
               </label>
               <label>Subscription plan
                 <select id="planInput">
+                  <option>Solo Agent</option>
                   <option>Starter</option>
                   <option>Team</option>
-                  <option>Pro</option>
+                  <option>Premium</option>
                 </select>
               </label>
               <label class="wide">Invite teammate<input id="inviteEmail" type="email" placeholder="sales@company.com" /></label>
@@ -424,6 +431,7 @@
               </div>
             </div>
             <div class="settings-actions">
+              <button class="button primary checkout-button" data-plan="solo" type="button">Start Solo trial</button>
               <button class="button primary checkout-button" data-plan="starter" type="button">Start Starter trial</button>
               <button class="button secondary checkout-button" data-plan="team" type="button">Start Team trial</button>
               <button id="manageBilling" class="button secondary" type="button">Manage billing / cancel</button>

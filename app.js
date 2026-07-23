@@ -68,7 +68,7 @@ const sampleLeads = [
 ];
 
 const state = {
-  company: { id: DEMO_COMPANY_ID, name: "Demo Resort Co.", plan: "Starter", role: "Owner" },
+  company: { id: DEMO_COMPANY_ID, name: "Demo Resort Co.", plan: "Solo Agent", role: "Owner" },
   user: null,
   subscription: null,
   cloudError: null,
@@ -324,7 +324,7 @@ async function handleCheckoutReturn() {
 
 async function startCheckout(plan) {
   if (plan === "pro") {
-    window.location.href = "mailto:sales@resortleadfinder.com?subject=Resort%20Lead%20Finder%20Pro%20Plan";
+    window.location.href = "mailto:sales@resortleadfinder.com?subject=Resort%20Lead%20Finder%20Premium%20Plan";
     return;
   }
 
@@ -427,7 +427,7 @@ async function loadWorkspace() {
 
 function loadLocalWorkspace() {
   const local = readLocalStore();
-  state.company = local.company || { id: DEMO_COMPANY_ID, name: "Demo Resort Co.", plan: "Starter", role: "Owner" };
+  state.company = local.company || { id: DEMO_COMPANY_ID, name: "Demo Resort Co.", plan: "Solo Agent", role: "Owner" };
   state.user = supabaseClient ? null : local.user || null;
   state.subscription = supabaseClient ? null : local.subscription || null;
   state.leads = (local.leads || sampleLeads).map(prepareLead);
@@ -441,7 +441,7 @@ async function loadRemoteWorkspace() {
   if (memberError) {
     showToast(memberError.message);
     state.cloudError = memberError.message;
-    state.company = { id: "cloud-error", name: "Cloud workspace", plan: "Starter", role: "Owner" };
+    state.company = { id: "cloud-error", name: "Cloud workspace", plan: "Solo Agent", role: "Owner" };
     state.leads = [];
     state.tasks = [];
     state.subscription = null;
@@ -457,7 +457,7 @@ async function loadRemoteWorkspace() {
 
     if (memberError || !membership) {
       state.cloudError = memberError?.message || "No company workspace found for this account.";
-      state.company = { id: "cloud-setup", name: defaultCompanyName, plan: "Starter", role: "Owner" };
+      state.company = { id: "cloud-setup", name: defaultCompanyName, plan: "Solo Agent", role: "Owner" };
       state.leads = [];
       state.tasks = [];
       state.subscription = null;
@@ -469,7 +469,7 @@ async function loadRemoteWorkspace() {
   state.company = {
     id: membership.companies.id,
     name: membership.companies.name,
-    plan: membership.companies.plan || "Starter",
+    plan: membership.companies.plan || "Solo Agent",
     role: membership.role || "Owner"
   };
 
@@ -588,7 +588,7 @@ async function createRemoteCompany(name) {
 
   const { data: company, error: companyError } = await supabaseClient
     .from("companies")
-    .insert({ name, plan: "Starter" })
+    .insert({ name, plan: "Solo Agent" })
     .select()
     .single();
   if (companyError) return showToast(companyError.message);
@@ -988,7 +988,7 @@ function renderScriptOptions() {
 
 function renderSettings() {
   document.querySelector("#companyNameInput").value = state.company.name;
-  document.querySelector("#planInput").value = state.company.plan || "Starter";
+  document.querySelector("#planInput").value = state.company.plan || "Solo Agent";
   document.querySelector("#defaultRoleInput").value = state.company.role || "Owner";
   const status = state.subscription?.status;
   const billingLabel = hasBillingAccess()

@@ -41,12 +41,17 @@ The homepage plan buttons use Stripe Checkout and a 14-day subscription trial. T
 ### Create Products and Prices
 
 1. Open the Stripe Dashboard.
-2. Create a product named `Resort Lead Finder Starter`.
-3. Add a recurring monthly price, for example `$199/month`.
+2. Create a product named `Resort Lead Finder Solo Agent`.
+3. Add a recurring monthly price for `$35/month`.
 4. Copy the price ID. It starts with `price_`.
-5. Create another product named `Resort Lead Finder Team`.
-6. Add a recurring monthly price, for example `$499/month`.
+5. Create a product named `Resort Lead Finder Starter`.
+6. Add a recurring monthly price for `$149/month`.
 7. Copy that price ID too.
+8. Create another product named `Resort Lead Finder Team`.
+9. Add a recurring monthly price for `$399/month`.
+10. Copy that price ID too.
+
+The Premium plan is custom/contact-sales, so it does not need a Stripe price ID unless you later want self-serve checkout for it.
 
 ### Add Vercel Environment Variables
 
@@ -54,6 +59,7 @@ In Vercel, open the project, then go to **Settings > Environment Variables** and
 
 ```txt
 STRIPE_SECRET_KEY=sk_live_or_test_key_from_stripe
+STRIPE_SOLO_PRICE_ID=price_your_solo_monthly_price
 STRIPE_STARTER_PRICE_ID=price_your_starter_monthly_price
 STRIPE_TEAM_PRICE_ID=price_your_team_monthly_price
 APP_URL=https://your-vercel-app.vercel.app
@@ -123,6 +129,33 @@ active
 Other statuses, including `incomplete`, `past_due`, `canceled`, and `unpaid`, show a billing screen instead of the sales dashboard.
 
 If a customer starts checkout before creating their app account, `api/link-subscription.js` links the Stripe subscription to the company after signup when the email address matches.
+
+### Customer Cancellation
+
+The app includes `api/create-customer-portal-session.js` and a **Manage billing** button. Signed-in customers can use that button to open Stripe's secure Customer Portal and cancel either:
+
+```txt
+their 14-day trial
+an active paid subscription after the trial
+```
+
+Before this works in production, open Stripe and configure the Customer Portal:
+
+1. Go to **Settings > Billing > Customer portal**.
+2. Turn on customer subscription cancellation.
+3. Choose whether cancellation happens immediately or at the end of the billing period.
+4. Save the portal settings.
+
+The portal uses the same Vercel environment variables already listed above:
+
+```txt
+STRIPE_SECRET_KEY
+APP_URL
+SUPABASE_URL
+SUPABASE_SERVICE_ROLE_KEY
+```
+
+When a customer cancels, Stripe sends `customer.subscription.updated` or `customer.subscription.deleted` to the webhook. The app then updates the company billing status in Supabase.
 
 ## How Company Data Is Separated
 

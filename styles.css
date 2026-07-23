@@ -196,6 +196,10 @@ body {
   gap: 10px;
 }
 
+.price-card {
+  grid-template-rows: auto auto 1fr auto;
+}
+
 .price-card .button {
   margin-top: 8px;
   align-self: end;

@@ -282,6 +282,22 @@
           </div>
           <div id="pipelineHealth" class="pipeline-health"></div>
         </section>
+
+        <div class="split-layout">
+          <section class="panel">
+            <div class="panel-heading">
+              <h3>Source performance</h3>
+            </div>
+            <div id="sourcePerformance" class="source-performance"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-heading">
+              <h3>Conversion impact</h3>
+            </div>
+            <div id="conversionImpact" class="conversion-impact"></div>
+          </section>
+        </div>
       </section>
 
       <section class="view" id="finder">
@@ -386,6 +402,24 @@
             </label>
           </div>
         </section>
+
+        <div class="split-layout">
+          <section class="panel">
+            <div class="panel-heading">
+              <h3>Follow-up sequence</h3>
+              <button id="copySequence" class="button secondary" type="button">Copy sequence</button>
+            </div>
+            <textarea id="sequenceText" rows="11"></textarea>
+          </section>
+
+          <section class="panel">
+            <div class="panel-heading">
+              <h3>Package proposal</h3>
+              <button id="copyProposal" class="button secondary" type="button">Copy proposal</button>
+            </div>
+            <textarea id="proposalText" rows="11"></textarea>
+          </section>
+        </div>
       </section>
 
       <section class="view" id="settings">
@@ -478,6 +512,20 @@
               <option>Qualified</option>
               <option>Proposal</option>
               <option>Booked</option>
+            </select>
+          </label>
+          <label>Lead source
+            <select id="leadSource">
+              <option>Website inquiry</option>
+              <option>Referral</option>
+              <option>Facebook travel group</option>
+              <option>Instagram</option>
+              <option>LinkedIn</option>
+              <option>Paid search</option>
+              <option>Expo/event</option>
+              <option>Phone call</option>
+              <option>Manual</option>
+              <option>CSV import</option>
             </select>
           </label>
           <label class="wide">Notes<textarea id="leadNotes" rows="4"></textarea></label>

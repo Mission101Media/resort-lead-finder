@@ -779,13 +779,17 @@ label {
 }
 
 .account-list,
-.pipeline-health {
+.pipeline-health,
+.source-performance,
+.conversion-impact {
   display: grid;
   gap: 12px;
 }
 
 .account-list div,
-.pipeline-health div {
+.pipeline-health div,
+.source-performance div,
+.conversion-impact div {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 12px;
@@ -795,6 +799,22 @@ label {
 
 .pipeline-health {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.source-performance,
+.conversion-impact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.source-performance span,
+.conversion-impact span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.conversion-impact strong {
+  color: var(--accent-strong);
+  font-size: 24px;
 }
 
 .account-list a {
@@ -932,6 +952,8 @@ menu {
   .split-layout,
   .results-grid,
   .pipeline-health,
+  .source-performance,
+  .conversion-impact,
   .billing-gate,
   .proof-band,
   .pricing-grid,

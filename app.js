@@ -36,7 +36,7 @@ const sampleLeads = [
     destination: "Theme parks",
     group: "Family",
     budget: 6400,
-    travelDate: "2026-07-18",
+    travelDate: "2026-08-18",
     status: "Contacted",
     notes: "Four travelers. Comparing resort bundle against booking separately.",
     source: "Website inquiry"
@@ -258,6 +258,14 @@ function bindEvents() {
   document.querySelector("#copyScript").addEventListener("click", async () => {
     await navigator.clipboard.writeText(document.querySelector("#scriptText").value);
     showToast("Script copied");
+  });
+  document.querySelector("#copySequence").addEventListener("click", async () => {
+    await navigator.clipboard.writeText(document.querySelector("#sequenceText").value);
+    showToast("Sequence copied");
+  });
+  document.querySelector("#copyProposal").addEventListener("click", async () => {
+    await navigator.clipboard.writeText(document.querySelector("#proposalText").value);
+    showToast("Proposal copied");
   });
 }
 
@@ -660,6 +668,7 @@ function openLeadDialog(leadId = null) {
   document.querySelector("#leadBudget").value = lead?.budget || 4500;
   document.querySelector("#leadDate").value = lead?.travelDate || "";
   document.querySelector("#leadStatus").value = lead?.status || "New";
+  document.querySelector("#leadSource").value = lead?.source || "Manual";
   document.querySelector("#leadNotes").value = lead?.notes || "";
   leadDialog.showModal();
 }
@@ -677,7 +686,7 @@ async function addLeadFromForm() {
     travelDate: document.querySelector("#leadDate").value,
     status: document.querySelector("#leadStatus").value,
     notes: document.querySelector("#leadNotes").value,
-    source: existingLead?.source || "Manual"
+    source: document.querySelector("#leadSource").value || existingLead?.source || "Manual"
   });
 
   const existingIndex = state.leads.findIndex((item) => item.id === lead.id || (lead.email && item.email.toLowerCase() === lead.email.toLowerCase()));
@@ -807,6 +816,8 @@ function render() {
   renderBillingGate();
   renderMetrics();
   renderPipelineHealth();
+  renderSourcePerformance();
+  renderConversionImpact();
   renderBestLeads();
   renderTasks();
   renderFinder();
@@ -853,7 +864,10 @@ function hasBillingAccess() {
 
 function renderMetrics() {
   const hot = state.leads.filter((lead) => lead.score >= 75).length;
-  const quarter = state.leads.filter((lead) => daysUntil(lead.travelDate) <= 90).length;
+  const quarter = state.leads.filter((lead) => {
+    const days = daysUntil(lead.travelDate);
+    return days >= 0 && days <= 90;
+  }).length;
   const value = state.leads.reduce((sum, lead) => sum + lead.budget, 0);
 
   document.querySelector("#metricTotal").textContent = state.leads.length;
@@ -864,7 +878,10 @@ function renderMetrics() {
 
 function renderPipelineHealth() {
   const stages = ["New", "Contacted", "Qualified", "Proposal", "Booked"];
-  const stale = state.leads.filter((lead) => !["Qualified", "Proposal", "Booked"].includes(lead.status) && daysUntil(lead.travelDate) <= 30);
+  const stale = state.leads.filter((lead) => {
+    const days = daysUntil(lead.travelDate);
+    return !["Qualified", "Proposal", "Booked"].includes(lead.status) && days >= 0 && days <= 30;
+  });
   document.querySelector("#pipelineHealth").innerHTML = `
     ${stages.map((stage) => {
       const leads = state.leads.filter((lead) => lead.status === stage);
@@ -879,6 +896,62 @@ function renderPipelineHealth() {
     <div>
       <strong>Needs attention</strong>
       <span>${stale.length} stale or urgent leads</span>
+    </div>
+  `;
+}
+
+function renderSourcePerformance() {
+  const groups = new Map();
+  state.leads.forEach((lead) => {
+    const source = lead.source || "Unknown";
+    const current = groups.get(source) || { count: 0, hot: 0, value: 0 };
+    current.count += 1;
+    current.hot += lead.score >= 75 ? 1 : 0;
+    current.value += lead.budget;
+    groups.set(source, current);
+  });
+
+  const rows = [...groups.entries()]
+    .sort((a, b) => b[1].value - a[1].value)
+    .slice(0, 5);
+
+  document.querySelector("#sourcePerformance").innerHTML = rows.length
+    ? rows.map(([source, data]) => `
+      <div>
+        <strong>${escapeHtml(source)}</strong>
+        <span>${data.count} leads · ${data.hot} hot · ${money(data.value)}</span>
+      </div>
+    `).join("")
+    : `<p class="empty">No source data yet.</p>`;
+}
+
+function renderConversionImpact() {
+  const hotLeads = state.leads.filter((lead) => lead.score >= 75);
+  const openHot = hotLeads.filter((lead) => !["Proposal", "Booked"].includes(lead.status));
+  const followUpsDue = state.tasks.filter((task) => !task.done && daysUntil(task.dueAt) <= 1).length;
+  const urgentTrips = state.leads.filter((lead) => {
+    const days = daysUntil(lead.travelDate);
+    return !["Proposal", "Booked"].includes(lead.status) && days >= 0 && days <= 30;
+  });
+  const hotValue = hotLeads.reduce((sum, lead) => sum + lead.budget, 0);
+  const averageHotValue = hotLeads.length ? hotValue / hotLeads.length : 0;
+
+  document.querySelector("#conversionImpact").innerHTML = `
+    <div>
+      <strong>${openHot.length}</strong>
+      <span>hot leads still need a sales move</span>
+    </div>
+    <div>
+      <strong>${followUpsDue}</strong>
+      <span>follow-ups due today or tomorrow</span>
+    </div>
+    <div>
+      <strong>${urgentTrips.length}</strong>
+      <span>urgent trips risk going cold</span>
+    </div>
+    <div>
+      <strong>${money(averageHotValue)}</strong>
+      <span>average value of one recovered hot booking</span>
     </div>
   `;
 }
@@ -917,7 +990,8 @@ function renderFinder() {
   document.querySelector("#budgetLabel").textContent = `${money(minBudget)}+`;
 
   const matches = state.leads.filter((lead) => {
-    const windowMatch = maxWindow === "any" || daysUntil(lead.travelDate) <= Number(maxWindow);
+    const days = daysUntil(lead.travelDate);
+    const windowMatch = maxWindow === "any" || (days >= 0 && days <= Number(maxWindow));
     return (destination === "any" || lead.destination === destination)
       && lead.budget >= minBudget
       && windowMatch
@@ -1034,8 +1108,9 @@ function leadCard(lead) {
 function updateScript() {
   const lead = state.leads.find((item) => item.id === document.querySelector("#scriptLead").value) || state.leads[0];
   const offer = document.querySelector("#scriptOffer").value;
-  const text = lead ? buildOutreachScript(lead, offer) : "";
-  document.querySelector("#scriptText").value = text;
+  document.querySelector("#scriptText").value = lead ? buildOutreachScript(lead, offer) : "";
+  document.querySelector("#sequenceText").value = lead ? buildFollowUpSequence(lead, offer) : "";
+  document.querySelector("#proposalText").value = lead ? buildPackageProposal(lead, offer) : "";
 }
 
 function buildOutreachScript(lead, offer) {
@@ -1079,6 +1154,56 @@ function recommendedOfferLine(lead, selectedOffer) {
   if (/anniversary/i.test(lead.notes || "")) return "I found anniversary-friendly options that fit the trip style you described.";
   if (/meeting|leadership|retreat|corporate/i.test(lead.notes || "")) return "I found retreat-ready options with the practical details your company group will need.";
   return `I found ${articleFor(selectedOffer)} ${selectedOffer} that fits your ${lead.group.toLowerCase()} trip.`;
+}
+
+function buildFollowUpSequence(lead, offer) {
+  const firstName = lead.name.split(" ")[0];
+  const date = shortDate(lead.travelDate).toLowerCase();
+  const hooks = outreachHooks(lead);
+  const offerLabel = lead.destination === "Cruise" ? "cruise or resort package" : offer;
+  const valueLine = /bundle|separately|comparing|price|payment|budget/i.test(lead.notes || "")
+    ? "Include a simple side-by-side package value comparison."
+    : "Include one best-value option and one upgraded option.";
+
+  return `Lead: ${lead.name} · Score ${lead.score} · ${money(lead.budget)} budget
+
+Day 0 - First response
+Hi ${firstName}, I saw your ${lead.destination.toLowerCase()} trip inquiry for ${date}. ${hooks} ${valueLine} Are you open to a quick call today so I can narrow this to the strongest fit?
+
+Day 1 - Options follow-up
+Send two tailored options for the ${offerLabel}, including room setup, travel timing, included amenities, estimated total, and the clearest next step.
+
+Day 3 - Value check
+Follow up on the main decision point: budget fit, travel dates, room availability, flights, or group needs. Ask what would make the trip easy to say yes to.
+
+Day 7 - Final useful nudge
+Share the strongest remaining option and ask whether to hold the quote, adjust the budget, or close the file for now.`;
+}
+
+function buildPackageProposal(lead, offer) {
+  const need = outreachHooks(lead);
+  const source = lead.source ? `Source: ${lead.source}` : "Source: Unknown";
+  const fit = recommendedOfferLine(lead, offer);
+  const paymentNote = /payment|budget|price|comparing|separately|bundle/i.test(lead.notes || "")
+    ? "Show total package value, deposit timing, flexible payment path, and what is included compared with booking pieces separately."
+    : "Show total price, what is included, room/travel fit, and one clear reason to choose each option.";
+
+  return `${lead.name} package proposal
+${source}
+Trip: ${lead.group} · ${lead.destination} · ${shortDate(lead.travelDate)}
+Budget target: ${money(lead.budget)}
+
+Best-fit angle
+${fit} ${need}
+
+Option 1 - Best value
+Keep this closest to ${money(lead.budget)}. ${paymentNote}
+
+Option 2 - Upgrade
+Add the highest-impact upgrade for this traveler, such as room view, dining, spa, meeting space, flights, nightlife access, or family amenities.
+
+Recommended next step
+Send the two-option comparison, then ask for the decision blocker: dates, deposit, room setup, flight timing, or total budget.`;
 }
 
 function articleFor(phrase) {
@@ -1133,6 +1258,7 @@ function scoreLead(lead) {
 function scoreLeadDetails(lead) {
   const budget = Number(lead.budget) || 0;
   const days = daysUntil(lead.travelDate);
+  const notes = lead.notes || "";
   let score = 35;
   const reasons = ["Base score +35 for a complete vacation inquiry"];
 
@@ -1152,7 +1278,9 @@ function scoreLeadDetails(lead) {
     reasons.push("+0 budget may need qualification");
   }
 
-  if (days >= 0 && days <= 45) {
+  if (days < 0) {
+    reasons.push("+0 travel date has passed and needs correction");
+  } else if (days <= 45) {
     score += 24;
     reasons.push("+24 travel window is urgent");
   } else if (days <= 90) {
@@ -1173,12 +1301,25 @@ function scoreLeadDetails(lead) {
     score += 8;
     reasons.push(`+8 ${lead.group.toLowerCase()} trip usually needs planning help`);
   }
-  if (lead.notes && lead.notes.length > 35) {
+  if (notes && notes.length > 35) {
     score += 5;
     reasons.push("+5 detailed notes give the rep personalization hooks");
   }
 
-  if (/price-sensitive|comparing|separately|payment|budget/i.test(lead.notes || "")) {
+  const sourcePoints = sourceScore(lead.source);
+  if (sourcePoints > 0) {
+    score += sourcePoints;
+    reasons.push(`+${sourcePoints} ${lead.source.toLowerCase()} tends to show stronger intent`);
+  }
+
+  const intentMatches = intentSignals(notes);
+  if (intentMatches.length) {
+    const intentPoints = Math.min(10, intentMatches.length * 3);
+    score += intentPoints;
+    reasons.push(`+${intentPoints} clear buying signals: ${intentMatches.join(", ")}`);
+  }
+
+  if (/price-sensitive|comparing|separately|payment|budget/i.test(notes)) {
     reasons.push("Value note: compare bundle savings, payment timing, and best-fit package options");
   }
 
@@ -1186,6 +1327,26 @@ function scoreLeadDetails(lead) {
     score: Math.max(1, Math.min(score, 100)),
     reasons
   };
+}
+
+function sourceScore(source = "") {
+  const sourceText = source.toLowerCase();
+  if (/referral/.test(sourceText)) return 8;
+  if (/website inquiry|paid search|phone call/.test(sourceText)) return 6;
+  if (/linkedin|expo|event/.test(sourceText)) return 5;
+  if (/facebook|instagram/.test(sourceText)) return 3;
+  return 0;
+}
+
+function intentSignals(notes = "") {
+  const signals = [
+    [/kids|children|adjoining|family/i, "family fit"],
+    [/payment|deposit|budget|price|comparing|bundle|separately/i, "price decision"],
+    [/anniversary|dining|oceanfront|direct flight|flight/i, "specific trip preferences"],
+    [/meeting|leadership|retreat|corporate|spa/i, "group logistics"],
+    [/nightlife|drink package|six|friends/i, "group activities"]
+  ];
+  return signals.filter(([pattern]) => pattern.test(notes)).map(([, label]) => label);
 }
 
 function scoreSummary(lead) {
@@ -1345,6 +1506,7 @@ function importCsv(file) {
       headers.forEach((header, index) => {
         lead[header.trim()] = record[index];
       });
+      if (!lead.source) lead.source = "CSV import";
       return prepareLead(lead);
     });
     const importedEmails = new Set();
